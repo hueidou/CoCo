@@ -120,12 +120,12 @@ export default function Header() {
       ? "ru"
       : "en";
     const faqLang = lang === "zh" ? "zh" : "en";
-    const url = `https://copaw.agentscope.io/docs/faq.${faqLang}.md`;
+    const url = `https://coco.agentscope.io/docs/faq.${faqLang}.md`;
     fetch(url, { cache: "no-cache" })
       .then((res) => (res.ok ? res.text() : Promise.reject()))
       .then((text) => {
-        const zhPattern = /###\s*CoPaw如何更新[\s\S]*?(?=\n###|$)/;
-        const enPattern = /###\s*How to update CoPaw[\s\S]*?(?=\n###|$)/;
+        const zhPattern = /###\s*CoCo如何更新[\s\S]*?(?=\n###|$)/;
+        const enPattern = /###\s*How to update CoCo[\s\S]*?(?=\n###|$)/;
         const match = text.match(faqLang === "zh" ? zhPattern : enPattern);
         setUpdateMarkdown(
           match && lang !== "ru"
@@ -159,7 +159,7 @@ export default function Header() {
                 ? `${import.meta.env.BASE_URL}dark-logo.png`
                 : `${import.meta.env.BASE_URL}logo.png`
             }
-            alt="CoPaw"
+            alt="CoCo"
             className={styles.logoImg}
           />
           <div className={styles.logoDivider} />

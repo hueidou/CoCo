@@ -1,13 +1,13 @@
 # Introduction
 
-This page explains what CoPaw is, what it can do, and how to get started
+This page explains what CoCo is, what it can do, and how to get started
 step by step with the documentation.
 
 ---
 
-## What is CoPaw?
+## What is CoCo?
 
-CoPaw is a **personal assistant** that runs in your own environment.
+CoCo is a **personal assistant** that runs in your own environment.
 
 ![console fig](https://img.alicdn.com/imgextra/i1/O1CN01TZtpUC23sUlflQYuT_!!6000000007311-2-tps-3822-2064.png)
 
@@ -26,35 +26,35 @@ CoPaw is a **personal assistant** that runs in your own environment.
 - **Multi-layer security** — Built-in tool protection, file access control,
   skill security scanning, and more to ensure safe operation.
 
-CoPaw is built by the [AgentScope team](https://github.com/agentscope-ai) on
+CoCo is built by the [AgentScope team](https://github.com/agentscope-ai) on
 [AgentScope](https://github.com/agentscope-ai/agentscope),
 [AgentScope Runtime](https://github.com/agentscope-ai/agentscope-runtime), and
 [ReMe](https://github.com/agentscope-ai/ReMe).
 
 ---
 
-## How do you use CoPaw?
+## How do you use CoCo?
 
-There are two main ways to use CoPaw:
+There are two main ways to use CoCo:
 
 1. **Chat in messaging apps**
    Send messages in DingTalk, Feishu, WeChat, Discord, Telegram, or other apps,
-   and CoPaw replies in the same app. Whether looking things up, managing todos,
+   and CoCo replies in the same app. Whether looking things up, managing todos,
    or answering questions — it all depends on your enabled Skills. A single
-   CoPaw instance can connect to multiple apps, responding in whichever channel
+   CoCo instance can connect to multiple apps, responding in whichever channel
    you're using.
 
 2. **Scheduled execution**
-   No need to send messages manually each time. CoPaw can run automatically at
+   No need to send messages manually each time. CoCo can run automatically at
    set times:
    - Send a fixed message to a channel (e.g., "Good morning" to DingTalk at 9am);
-   - Ask CoPaw a question and send the answer to a channel (e.g., every 2 hours
+   - Ask CoCo a question and send the answer to a channel (e.g., every 2 hours
      ask "What are my todos?" and post to DingTalk);
    - Run a scheduled check-in or digest: use your prepared questions to query
-     CoPaw and send the answers to your last active channel.
+     CoCo and send the answers to your last active channel.
 
 After installation, connecting at least one channel, and starting the service,
-you can chat with CoPaw in DingTalk, Feishu, QQ, and other apps, and enjoy
+you can chat with CoCo in DingTalk, Feishu, QQ, and other apps, and enjoy
 scheduled messages and check-ins. What it can do depends on which Skills
 you've enabled.
 
@@ -62,29 +62,29 @@ you've enabled.
 
 ## Key concepts in the documentation
 
-- **Console** — CoPaw's built-in web management interface. Chat, configure
+- **Console** — CoCo's built-in web management interface. Chat, configure
   channels, manage skills, set up models, and more. See [Console](./console).
-- **Channel** — Where you talk to CoPaw (DingTalk, Feishu, QQ, Discord,
+- **Channel** — Where you talk to CoCo (DingTalk, Feishu, QQ, Discord,
   iMessage, etc.). Configure step by step in [Channels](./channels).
-- **Heartbeat** — Ask CoPaw your prepared questions at fixed intervals, and
+- **Heartbeat** — Ask CoCo your prepared questions at fixed intervals, and
   optionally send the answers to your last active channel. See
   [Heartbeat](./heartbeat).
 - **Scheduled tasks** — Multiple tasks, each with independent time configuration
-  (send X daily at 9am, ask CoPaw Y every 2 hours, etc.), managed through the
+  (send X daily at 9am, ask CoCo Y every 2 hours, etc.), managed through the
   Console or [CLI](./cli).
 - **Skill pool and workspace skills** — The skill pool is a shared skill
   repository. Workspace skills are local copies that an agent actually uses
   when running. See [Skills](./skills).
 - **MCP and tools** — MCP (Model Context Protocol) is a standard protocol for
-  connecting external tool servers to extend capabilities. Tools are CoPaw's
+  connecting external tool servers to extend capabilities. Tools are CoCo's
   built-in core abilities (reading/writing files, executing commands, browser,
   etc.). See [MCP and Tools](./mcp).
-- **Agent/Workspace** — Starting from v0.1.0, CoPaw supports multi-agent,
+- **Agent/Workspace** — Starting from v0.1.0, CoCo supports multi-agent,
   allowing multiple independent AI agents to run. Each agent has its own
   workspace, configuration, memory, skills, and conversation history. Agents
   can communicate and collaborate through collaboration skills to complete
   complex tasks. See [Multi-Agent](./multi-agent).
-- **Security mechanisms** — CoPaw provides multi-layer security, including
+- **Security mechanisms** — CoCo provides multi-layer security, including
   tool protection (intercept dangerous command parameters), file protection
   (restrict sensitive path access), and skill scanner (check skill package
   security). See [Security](./security).
@@ -98,13 +98,13 @@ Each concept is explained in detail in its corresponding chapter.
 1. **[Quick start](./quickstart)** — Get the service running in three commands.
 2. **[Console](./console)** — After the service starts, open the Console in
    your browser (`http://127.0.0.1:8088/`). **This is the central hub for
-   configuring and using CoPaw.** Start by chatting and configuring models in
-   the Console to understand how CoPaw works.
+   configuring and using CoCo.** Start by chatting and configuring models in
+   the Console to understand how CoCo works.
 3. **[Models](./models)** — Configure API keys for cloud LLM providers or
-   download local models. This is a **required prerequisite** for using CoPaw.
+   download local models. This is a **required prerequisite** for using CoCo.
 4. **Configure and use as needed**:
-   - [Channels](./channels) — Connect DingTalk / Feishu / WeChat / Discord / Telegram to chat with CoPaw in those apps;
-   - [Skills](./skills) — Understand and extend CoPaw's capabilities;
+   - [Channels](./channels) — Connect DingTalk / Feishu / WeChat / Discord / Telegram to chat with CoCo in those apps;
+   - [Skills](./skills) — Understand and extend CoCo's capabilities;
    - [MCP and Tools](./mcp) — Connect external MCP tool servers;
    - [Magic Commands](./commands) — Use special commands to quickly control conversation state (like `/new` for new conversation, `/clear` to clear history, `/stop` to stop tasks, `/restart` to restart service, etc.) without waiting for AI to understand;
    - [Security](./security) — Configure tool protection, file protection, skill security scanning, and other security mechanisms;

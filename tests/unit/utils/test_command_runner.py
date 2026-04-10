@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from copaw.utils import command_runner
-from copaw.utils.command_runner import (
+from coco.utils import command_runner
+from coco.utils.command_runner import (
     CommandExecutionError,
     ManagedProcess,
     ProcessLaunchError,
@@ -303,13 +303,13 @@ def test_start_multiprocessing_process_wraps_process() -> None:
 
     managed = start_multiprocessing_process(
         raw_process,
-        command=["copaw-model-download", "demo/repo", "modelscope"],
+        command=["coco-model-download", "demo/repo", "modelscope"],
     )
 
     assert isinstance(managed, ManagedProcess)
     assert managed.creation_mode == "multiprocessing"
     assert managed.command == [
-        "copaw-model-download",
+        "coco-model-download",
         "demo/repo",
         "modelscope",
     ]

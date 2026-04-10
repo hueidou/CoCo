@@ -6,9 +6,9 @@ imports, or files you add yourself.
 Two ways to manage skills:
 
 - **Console:** Use the [Console](./console) under **Workspace → Skills**.
-- **Working directory:** Edit skill files directly under `$COPAW_WORKING_DIR`
-  (default `~/.copaw`), including `$COPAW_WORKING_DIR/skill_pool/` and each
-  workspace's `$COPAW_WORKING_DIR/workspaces/{agent_id}/skills/`.
+- **Working directory:** Edit skill files directly under `$COCO_WORKING_DIR`
+  (default `~/.coco`), including `$COCO_WORKING_DIR/skill_pool/` and each
+  workspace's `$COCO_WORKING_DIR/workspaces/{agent_id}/skills/`.
 
 > If you're new to channels, heartbeat, or cron, read [Introduction](./intro) first.
 
@@ -19,16 +19,16 @@ copies. The structure and creation paths are described below.
 
 ## Skill Structure
 
-CoPaw skills are organized in two layers:
+CoCo skills are organized in two layers:
 
-- **Skill Pool:** Shared local repository at `$COPAW_WORKING_DIR/skill_pool/`
-  (default `~/.copaw/skill_pool/`).
+- **Skill Pool:** Shared local repository at `$COCO_WORKING_DIR/skill_pool/`
+  (default `~/.coco/skill_pool/`).
 - **Workspace Skills:** The local runtime copy at
-  `$COPAW_WORKING_DIR/workspaces/{agent_id}/skills/`
-  (default `~/.copaw/workspaces/{agent_id}/skills/`).
+  `$COCO_WORKING_DIR/workspaces/{agent_id}/skills/`
+  (default `~/.coco/workspaces/{agent_id}/skills/`).
 
 ```
-$COPAW_WORKING_DIR/                      # Default ~/.copaw
+$COCO_WORKING_DIR/                      # Default ~/.coco
   skill_pool/                # Shared pool
     skill.json               # Pool manifest
     pdf/
@@ -66,7 +66,7 @@ Pool-side operations:
   customize a builtin, save it under a new name and keep the builtin slot
   untouched.
 - **Conflict handling:** If save, import, upload, or broadcast would land on a
-  name that already exists, CoPaw returns a conflict instead of silently
+  name that already exists, CoCo returns a conflict instead of silently
   overwriting. The UI/API includes a suggested renamed target so you can retry
   with that name.
 
@@ -80,12 +80,12 @@ Adding skills to the pool:
    | **browser_cdp**               | Connect to or launch Chrome with CDP / remote-debugging enabled. Use only when the user explicitly wants CDP mode.              | Built-in                                                       |
    | **browser_visible**           | Launch a real, visible (headed) browser window for demos, debugging, or scenarios requiring human interaction.                  | Built-in                                                       |
    | **channel_message**           | Proactively send a one-way message to a session or channel after first locating the target session.                             | Built-in                                                       |
-   | **copaw_source_index**        | Internal CoPaw source/doc index skill for quickly mapping keywords to source paths and local docs.                              | Built-in                                                       |
-   | **cron**                      | Scheduled jobs. Create, list, pause, resume, or delete jobs via `copaw cron` or Console **Control → Cron Jobs**.                | Built-in                                                       |
+   | **coco_source_index**        | Internal CoCo source/doc index skill for quickly mapping keywords to source paths and local docs.                              | Built-in                                                       |
+   | **cron**                      | Scheduled jobs. Create, list, pause, resume, or delete jobs via `coco cron` or Console **Control → Cron Jobs**.                | Built-in                                                       |
    | **dingtalk_channel**          | Helps with DingTalk channel onboarding through a visible browser flow and required manual steps.                                | Built-in                                                       |
    | **docx**                      | Create, read, and edit Word documents (.docx), including TOC, headers/footers, tables, images, track changes, comments.         | https://github.com/anthropics/skills/tree/main/skills/docx     |
    | **file_reader**               | Read and summarize text-based files (.txt, .md, .json, .csv, .log, .py, etc.). PDF and Office are handled by dedicated skills.  | Built-in                                                       |
-   | **guidance**                  | Answer CoPaw installation and configuration questions by consulting local docs first.                                           | Built-in                                                       |
+   | **guidance**                  | Answer CoCo installation and configuration questions by consulting local docs first.                                           | Built-in                                                       |
    | **himalaya**                  | Manage emails via CLI (IMAP/SMTP). Use `himalaya` to list, read, search, and organize emails from the terminal.                 | https://github.com/openclaw/openclaw/tree/main/skills/himalaya |
    | **multi_agent_collaboration** | Coordinate with another agent when the user explicitly asks for it or another agent's context is needed.                        | Built-in                                                       |
    | **news**                      | Fetch and summarize latest news from configured sites; categories include politics, finance, society, world, tech, sports, etc. | Built-in                                                       |
@@ -98,11 +98,11 @@ Adding skills to the pool:
    or refresh out-of-date ones from the packaged source.
 
    The **Cron** built-in provides scheduled job management. Use the
-   [CLI](./cli) (`copaw cron`) or Console **Control → Cron Jobs**:
+   [CLI](./cli) (`coco cron`) or Console **Control → Cron Jobs**:
 
-   - Create: `copaw cron create --type agent --name "xxx" --cron "0 9 * * *" ...`
-   - List: `copaw cron list`
-   - Check state: `copaw cron state <job_id>`
+   - Create: `coco cron create --type agent --name "xxx" --cron "0 9 * * *" ...`
+   - List: `coco cron list`
+   - Check state: `coco cron state <job_id>`
 
 2. **Create directly in the pool UI**.
    This creates a shared pool skill without first creating it in a workspace.
@@ -118,7 +118,7 @@ Adding skills to the pool:
    pool.
 
 6. **Manual filesystem changes**.
-   You can place folders directly under `$COPAW_WORKING_DIR/skill_pool/`, but this is not
+   You can place folders directly under `$COCO_WORKING_DIR/skill_pool/`, but this is not
    recommended. Direct pool edits can be lost or overwritten more easily,
    especially for customized skills. Be careful and treat this as an advanced
    workflow.
@@ -126,7 +126,7 @@ Adding skills to the pool:
 ### Workspace Skills
 
 Every workspace runs from its own local copies under
-`$COPAW_WORKING_DIR/workspaces/{agent_id}/skills/`. Those copies are what the agent
+`$COCO_WORKING_DIR/workspaces/{agent_id}/skills/`. Those copies are what the agent
 actually loads at runtime.
 
 ---
@@ -228,7 +228,7 @@ The workspace skill page supports importing from the following URL sources:
 ### 5. Create manually in the workspace
 
 You can also create a workspace skill directly by writing files under
-`$COPAW_WORKING_DIR/workspaces/{agent_id}/skills/`, including using CoPaw itself to help
+`$COCO_WORKING_DIR/workspaces/{agent_id}/skills/`, including using CoCo itself to help
 generate those files.
 
 This is flexible, but the write location and resulting skill quality are not
@@ -236,10 +236,10 @@ always fully controlled. You should supervise the creation process carefully,
 verify that files land in the right workspace path, and review the skill
 content before relying on it.
 
-Create a directory under `$COPAW_WORKING_DIR/workspaces/{agent_id}/skills/`, add a
+Create a directory under `$COCO_WORKING_DIR/workspaces/{agent_id}/skills/`, add a
 `SKILL.md`, and make sure it includes YAML front matter with `name` and
 `description`. If the skill depends on external binaries or environment
-variables, declare them in `metadata.requires`; CoPaw exposes them as
+variables, declare them in `metadata.requires`; CoCo exposes them as
 `require_bins` and `require_envs` metadata, but does not disable the skill
 automatically.
 
@@ -299,7 +299,7 @@ not need to appear on Discord.
 
 Each skill can have a `config` object stored in its manifest entry. This config
 is not just stored metadata. When a skill is effective for the current
-workspace and channel, CoPaw injects that config into the runtime environment
+workspace and channel, CoCo injects that config into the runtime environment
 for that agent turn, then restores the environment after the turn completes.
 
 You can set config per skill in the Console (**Workspace → Skills** → click the
@@ -312,7 +312,7 @@ injected as environment variables. Keys not declared in `requires.env` are
 skipped (but still available via the full JSON variable). If a required key
 is missing from the config, a warning is logged.
 
-The full config is always available as `COPAW_SKILL_CONFIG_<SKILL_NAME>`
+The full config is always available as `COCO_SKILL_CONFIG_<SKILL_NAME>`
 (JSON string), regardless of `requires.env`.
 
 Existing host environment variables are never overwritten.
@@ -347,7 +347,7 @@ The skill can read:
 - `BASE_URL` comes from config and matches `requires.env`.
 - `timeout` is not in `requires.env`, so it is only available via the full
   JSON below.
-- `COPAW_SKILL_CONFIG_MY_SKILL` always contains the full JSON config.
+- `COCO_SKILL_CONFIG_MY_SKILL` always contains the full JSON config.
 
 Python example:
 
@@ -357,7 +357,7 @@ import os
 
 api_key = os.environ.get("MY_API_KEY", "")
 base_url = os.environ.get("BASE_URL", "")
-cfg = json.loads(os.environ.get("COPAW_SKILL_CONFIG_MY_SKILL", "{}"))
+cfg = json.loads(os.environ.get("COCO_SKILL_CONFIG_MY_SKILL", "{}"))
 timeout = cfg.get("timeout", 30)
 ```
 
@@ -377,7 +377,7 @@ When a skill runs, the effective config follows this priority (highest wins):
    `config` is copied as the initial workspace config. Subsequent workspace
    edits take precedence.
 
-For `requires` metadata, the parser checks keys in order: `metadata.openclaw.requires` → `metadata.copaw.requires` → `metadata.requires`. The first one found is used.
+For `requires` metadata, the parser checks keys in order: `metadata.openclaw.requires` → `metadata.coco.requires` → `metadata.requires`. The first one found is used.
 
 ---
 

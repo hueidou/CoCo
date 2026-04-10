@@ -104,8 +104,8 @@
 
     :global {
       /* Center icon in collapsed menu items */
-      .copaw-menu-item,
-      .copaw-menu-submenu .copaw-menu-item {
+      .coco-menu-item,
+      .coco-menu-submenu .coco-menu-item {
         padding-left: 0 !important;
         padding-right: 0 !important;
         display: flex !important;
@@ -114,27 +114,27 @@
       }
 
       /* Hide label text in collapsed mode */
-      .copaw-menu-title-content,
-      .copaw-menu-item > span:not([role]),
-      .copaw-menu-item-only-child > span {
+      .coco-menu-title-content,
+      .coco-menu-item > span:not([role]),
+      .coco-menu-item-only-child > span {
         display: none !important;
       }
 
       /* Hide group labels */
-      .copaw-menu-submenu-title {
+      .coco-menu-submenu-title {
         display: none !important;
       }
     }
   }
 
   :global {
-    .copaw-menu {
+    .coco-menu {
       background: #f9f8f4 !important;
       border-inline-end: 0 !important;
     }
 
     /* Group title (一级菜单分组) */
-    .copaw-menu-submenu-title {
+    .coco-menu-submenu-title {
       font-family: "PingFang SC", sans-serif !important;
       font-size: 12px !important;
       font-weight: 500 !important;
@@ -151,43 +151,43 @@
     }
 
     /* Hide submenu arrow */
-    .copaw-menu-submenu-arrow {
+    .coco-menu-submenu-arrow {
       display: none !important;
     }
 
     /* Always expand submenus */
-    .copaw-menu-submenu {
-      > .copaw-menu {
+    .coco-menu-submenu {
+      > .coco-menu {
         display: block !important;
       }
     }
 
     /* Menu item padding - align all items */
-    .copaw-menu-item {
+    .coco-menu-item {
       padding-left: 8px !important;
     }
 
     /* Remove submenu indent - align with parent */
-    .copaw-menu-submenu .copaw-menu-item {
+    .coco-menu-submenu .coco-menu-item {
       padding-left: 8px !important;
     }
 
     /* Selected item */
-    .copaw-menu-item-selected {
+    .coco-menu-item-selected {
       background: rgba(43, 18, 0, 0.08) !important;
       color: inherit !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
 
-      .copaw-menu-title-content {
+      .coco-menu-title-content {
         display: flex !important;
         align-items: center !important;
       }
     }
 
     /* Selected submenu item - keep text color unchanged */
-    .copaw-menu-submenu .copaw-menu-item-selected {
+    .coco-menu-submenu .coco-menu-item-selected {
       color: inherit !important;
     }
   }
@@ -203,13 +203,13 @@
   }
 
   :global {
-    .copaw-menu {
+    .coco-menu {
       background: #1a1a1a !important;
       border-inline-end: 0 !important;
     }
 
     /* Group title (sub-menu label) */
-    .copaw-menu-submenu-title {
+    .coco-menu-submenu-title {
       color: rgba(255, 255, 255, 0.45) !important;
 
       /* No hover effect for group titles in dark mode */
@@ -220,18 +220,18 @@
     }
 
     /* Regular menu item */
-    .copaw-menu-item {
+    .coco-menu-item {
       color: rgba(255, 255, 255, 0.75) !important;
     }
 
     /* Hover state - only for menu items, not group titles */
-    .copaw-menu-item:hover {
+    .coco-menu-item:hover {
       background: rgba(255, 255, 255, 0.1) !important;
       color: rgba(255, 255, 255, 0.95) !important;
     }
 
     /* Selected item */
-    .copaw-menu-item-selected {
+    .coco-menu-item-selected {
       background: rgba(255, 127, 22, 0.5) !important;
       color: #ff7f16 !important;
     }
@@ -379,7 +379,7 @@
 
 // ─── Update Modal ─────────────────────────────────────────────────────────────
 .updateModal {
-  :global(.copaw-modal-content) {
+  :global(.coco-modal-content) {
     padding: 0 !important;
     border-radius: 12px !important;
     overflow: visible !important;
@@ -387,20 +387,20 @@
     border: none !important;
   }
 
-  :global(.copaw-modal-body) {
+  :global(.coco-modal-body) {
     padding: 0 !important;
   }
 
-  :global(.copaw-modal-footer) {
+  :global(.coco-modal-footer) {
     padding: 12px 24px;
     margin-top: 0;
   }
 
-  :global(.copaw-modal-header) {
+  :global(.coco-modal-header) {
     display: none !important;
   }
 
-  :global(.copaw-modal-close) {
+  :global(.coco-modal-close) {
     display: none !important;
   }
 }
@@ -540,7 +540,7 @@
     color: rgba(255, 255, 255, 0.85);
 
     /* Text buttons (Docs / FAQ / GitHub / Changelog) */
-    :global(.copaw-btn-text),
+    :global(.coco-btn-text),
     :global(.ant-btn-text) {
       color: rgba(255, 255, 255, 0.75) !important;
 

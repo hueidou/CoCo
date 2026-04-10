@@ -14,14 +14,14 @@ export interface SiteConfig {
 }
 
 export const defaultConfig: SiteConfig = {
-  projectName: "CoPaw",
+  projectName: "CoCo",
   projectTaglineEn: "Works for you, grows with you",
   projectTaglineZh: "懂你所需，伴你左右",
-  repoUrl: "https://github.com/agentscope-ai/CoPaw",
+  repoUrl: "https://github.com/agentscope-ai/CoCo",
   docsPath: "/docs/",
   showTestimonials: true,
   modelScopeForkUrl:
-    "https://modelscope.cn/studios/fork?target=AgentScope/CoPaw",
+    "https://modelscope.cn/studios/fork?target=AgentScope/CoCo",
 };
 
 let cached: SiteConfig | null = null;

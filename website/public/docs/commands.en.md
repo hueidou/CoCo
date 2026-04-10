@@ -379,7 +379,7 @@ Example: `/model openai:gpt-4o`
 
 - 🖼️ - Supports image input
 - 🎥 - Supports video input
-- _(user-added)_ - User-added model (via `copaw models add-model` command)
+- _(user-added)_ - User-added model (via `coco models add-model` command)
 
 ---
 
@@ -481,9 +481,9 @@ Use `/model openai:gpt-4o` to switch to this model.
 
 ## System Control Commands
 
-Commands for controlling and monitoring CoPaw's runtime status. These commands execute directly without going through the Agent.
+Commands for controlling and monitoring CoCo's runtime status. These commands execute directly without going through the Agent.
 
-Send `/daemon <subcommand>` or short names (e.g., `/status`) in chat, or run `copaw daemon <subcommand>` from the terminal.
+Send `/daemon <subcommand>` or short names (e.g., `/status`) in chat, or run `coco daemon <subcommand>` from the terminal.
 
 | Command                             | Description                                                                             | Chat | Terminal |
 | ----------------------------------- | --------------------------------------------------------------------------------------- | ---- | -------- |
@@ -493,7 +493,7 @@ Send `/daemon <subcommand>` or short names (e.g., `/status`) in chat, or run `co
 | `/daemon restart` or `/restart`     | Zero-downtime reload (chat); prints instructions (terminal)                             | ✅   | ✅       |
 | `/daemon reload-config`             | Re-read and validate configuration file                                                 | ✅   | ✅       |
 | `/daemon version`                   | Version number, working directory, and log path                                         | ✅   | ✅       |
-| `/daemon logs` or `/daemon logs 50` | View last N lines of log (default 100, max 2000, from `copaw.log` in working directory) | ✅   | ✅       |
+| `/daemon logs` or `/daemon logs 50` | View last N lines of log (default 100, max 2000, from `coco.log` in working directory) | ✅   | ✅       |
 | `/daemon approve`                   | Approve pending tool execution (tool-guard scenario)                                    | ✅   | ❌       |
 
 ---
@@ -521,7 +521,7 @@ Display current runtime status, including configuration, working directory, and 
 
 ```
 /status                    # In chat
-copaw daemon status        # From terminal
+coco daemon status        # From terminal
 ```
 
 ---
@@ -534,7 +534,7 @@ When used in chat, performs zero-downtime reload: reloads channels, cron, and MC
 
 ```
 /restart                   # In chat
-copaw daemon restart       # From terminal (prints instructions only)
+coco daemon restart       # From terminal (prints instructions only)
 ```
 
 > 💡 **Tip**: After modifying channel or MCP configuration, use `/daemon reload-config` first to verify correctness, then use `/daemon restart` to apply changes.
@@ -549,34 +549,34 @@ Re-read and validate the configuration file, but does not reload runtime compone
 
 ```
 /daemon reload-config           # In chat
-copaw daemon reload-config      # From terminal
+coco daemon reload-config      # From terminal
 ```
 
 ---
 
 ### /daemon version - Version Information
 
-Display CoPaw version number, working directory path, and log file path.
+Display CoCo version number, working directory path, and log file path.
 
 **Usage:**
 
 ```
 /daemon version            # In chat
-copaw daemon version       # From terminal
+coco daemon version       # From terminal
 ```
 
 ---
 
 ### /daemon logs - View Logs
 
-View the last N lines of `copaw.log` in the working directory. Default 100 lines, maximum 2000 lines.
+View the last N lines of `coco.log` in the working directory. Default 100 lines, maximum 2000 lines.
 
 **Usage:**
 
 ```
 /daemon logs               # Default 100 lines
 /daemon logs 50            # Specify 50 lines
-copaw daemon logs -n 200   # From terminal, specify 200 lines
+coco daemon logs -n 200   # From terminal, specify 200 lines
 ```
 
 > 💡 **Tip**: For large log files, this command only reads the last 512KB from the end of the file to ensure fast response times.
@@ -602,16 +602,16 @@ Quickly approve pending tool execution. When tool execution requires manual appr
 All daemon commands support terminal usage (except `/stop` and `/daemon approve` which only work in chat):
 
 ```bash
-copaw daemon status
-copaw daemon restart
-copaw daemon reload-config
-copaw daemon version
-copaw daemon logs -n 50
+coco daemon status
+coco daemon restart
+coco daemon reload-config
+coco daemon version
+coco daemon logs -n 50
 ```
 
 **Multi-agent support:** All terminal commands support the `--agent-id` parameter (defaults to `default`).
 
 ```bash
-copaw daemon status --agent-id abc123
-copaw daemon version --agent-id abc123
+coco daemon status --agent-id abc123
+coco daemon version --agent-id abc123
 ```

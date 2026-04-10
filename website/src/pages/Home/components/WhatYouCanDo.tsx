@@ -63,7 +63,7 @@ const item = {
   },
 };
 
-export function CopawWhatYouCanDo() {
+export function CocoWhatYouCanDo() {
   const { t } = useTranslation();
   const [activeKey, setActiveKey] = useState<UseCaseKey>("social");
 
@@ -141,11 +141,11 @@ export function CopawWhatYouCanDo() {
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.2 }}
-      aria-labelledby="copaw-usecase-heading"
+      aria-labelledby="coco-usecase-heading"
     >
       <div className="mx-auto max-w-7xl">
         <motion.div className="text-center" variants={item}>
-          <h2 id="copaw-usecase-heading" className={sectionStyles.title}>
+          <h2 id="coco-usecase-heading" className={sectionStyles.title}>
             {t("usecases.title")}
           </h2>
           <p
@@ -183,7 +183,7 @@ export function CopawWhatYouCanDo() {
                       <div className="mt-1 h-6 w-6 shrink-0 md:mt-0.5 md:h-7 md:w-7">
                         {active && (
                           <motion.img
-                            layoutId="copaw-usecase-active-logo"
+                            layoutId="coco-usecase-active-logo"
                             src="https://img.alicdn.com/imgextra/i4/O1CN01vcAthP1tSFv3dB8Bd_!!6000000005900-55-tps-29-29.svg"
                             alt=""
                             aria-hidden

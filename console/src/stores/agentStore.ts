@@ -59,7 +59,7 @@ export const useAgentStore = create<AgentStore>()(
       getLastChatId: (agentId) => get().lastChatIdByAgent[agentId],
     }),
     {
-      name: "copaw-agent-storage",
+      name: "coco-agent-storage",
       storage: {
         getItem: (name) => {
           try {

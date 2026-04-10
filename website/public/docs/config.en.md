@@ -6,7 +6,7 @@ This page covers:
 - **Environment variables** — How to customize paths and behavior
 - **Configuration files** — Complete field description for `config.json` and `agent.json`
 
-From **v0.1.0**, CoPaw supports **multi-agent**. Configuration is split into two layers:
+From **v0.1.0**, CoCo supports **multi-agent**. Configuration is split into two layers:
 
 1. **Global config** (`config.json`) — Model providers, agent list, global settings
 2. **Agent config** (`agent.json`) — Independent config for each agent (channels, heartbeat, tools, etc.)
@@ -15,10 +15,10 @@ From **v0.1.0**, CoPaw supports **multi-agent**. Configuration is split into two
 
 ## Directory Structure
 
-The default working directory is `~/.copaw`. After running `copaw init`, the complete structure looks like:
+The default working directory is `~/.coco`. After running `coco init`, the complete structure looks like:
 
 ```
-$COPAW_WORKING_DIR/                      # Default ~/.copaw
+$COCO_WORKING_DIR/                      # Default ~/.coco
 ├── config.json                          # Global config
 ├── workspaces/
 │   ├── default/                         # Default agent workspace
@@ -41,23 +41,23 @@ $COPAW_WORKING_DIR/                      # Default ~/.copaw
     ├── skill.json                       # Pool metadata
     └── ...
 
-$COPAW_SECRET_DIR/                       # Default ~/.copaw.secret
+$COCO_SECRET_DIR/                       # Default ~/.coco.secret
 ├── providers.json                       # Model provider config and API keys
 └── envs.json                            # Environment variables
 ```
 
-> **Path explanation:** `$COPAW_WORKING_DIR` and `$COPAW_SECRET_DIR` are environment variables, with default values of `~/.copaw` and `~/.copaw.secret` respectively. They can be customized via environment variables, see "Environment Variables" section below.
+> **Path explanation:** `$COCO_WORKING_DIR` and `$COCO_SECRET_DIR` are environment variables, with default values of `~/.coco` and `~/.coco.secret` respectively. They can be customized via environment variables, see "Environment Variables" section below.
 
 ### Directory Explanation
 
-**Global Directory (`~/.copaw/`)**
+**Global Directory (`~/.coco/`)**
 
 | File / Directory | Purpose                                               |
 | ---------------- | ----------------------------------------------------- |
 | `config.json`    | Global config (model providers, env vars, agent list) |
 | `workspaces/`    | All agent workspace directories                       |
 
-**Agent Workspace (`~/.copaw/workspaces/{agent_id}/`)**
+**Agent Workspace (`~/.coco/workspaces/{agent_id}/`)**
 
 | File / Directory   | Purpose                                                      |
 | ------------------ | ------------------------------------------------------------ |
@@ -75,7 +75,7 @@ $COPAW_SECRET_DIR/                       # Default ~/.copaw.secret
 | `memory/`          | Daily memory files (see [Memory](./memory))                  |
 | `browser/`         | Browser user data (cookies, cache, localStorage, etc.)       |
 
-> **Persona files:** Agent behavior and personality are defined by persona files. Running `copaw init` automatically creates template files based on your chosen language (`zh` / `en` / `ru`). For detailed explanation and management, see [Agent Persona](./persona).
+> **Persona files:** Agent behavior and personality are defined by persona files. Running `coco init` automatically creates template files based on your chosen language (`zh` / `en` / `ru`). For detailed explanation and management, see [Agent Persona](./persona).
 
 > **Multi-Agent:** See the [Multi-Agent](./multi-agent) documentation for details.
 
@@ -89,33 +89,33 @@ You can customize paths and behavior via environment variables:
 
 | Variable                 | Default            | Description                                                                                                 |
 | ------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `COPAW_WORKING_DIR`      | `~/.copaw`         | Working directory root path                                                                                 |
-| `COPAW_SECRET_DIR`       | `~/.copaw.secret`  | Sensitive data directory (stores `providers.json` and `envs.json`). Docker default is `/app/working.secret` |
-| `COPAW_CONFIG_FILE`      | `config.json`      | Config file name (relative to `COPAW_WORKING_DIR`)                                                          |
-| `COPAW_HEARTBEAT_FILE`   | `HEARTBEAT.md`     | Heartbeat file name (relative to agent workspace)                                                           |
-| `COPAW_JOBS_FILE`        | `jobs.json`        | Cron jobs file name (relative to agent workspace)                                                           |
-| `COPAW_CHATS_FILE`       | `chats.json`       | Conversation history file name (relative to agent workspace)                                                |
-| `COPAW_TOKEN_USAGE_FILE` | `token_usage.json` | Token usage record file name (relative to agent workspace)                                                  |
+| `COCO_WORKING_DIR`      | `~/.coco`         | Working directory root path                                                                                 |
+| `COCO_SECRET_DIR`       | `~/.coco.secret`  | Sensitive data directory (stores `providers.json` and `envs.json`). Docker default is `/app/working.secret` |
+| `COCO_CONFIG_FILE`      | `config.json`      | Config file name (relative to `COCO_WORKING_DIR`)                                                          |
+| `COCO_HEARTBEAT_FILE`   | `HEARTBEAT.md`     | Heartbeat file name (relative to agent workspace)                                                           |
+| `COCO_JOBS_FILE`        | `jobs.json`        | Cron jobs file name (relative to agent workspace)                                                           |
+| `COCO_CHATS_FILE`       | `chats.json`       | Conversation history file name (relative to agent workspace)                                                |
+| `COCO_TOKEN_USAGE_FILE` | `token_usage.json` | Token usage record file name (relative to agent workspace)                                                  |
 
 **Other configuration:**
 
 | Variable                           | Default         | Description                                                                 |
 | ---------------------------------- | --------------- | --------------------------------------------------------------------------- |
-| `COPAW_LOG_LEVEL`                  | `info`          | Log level (`debug` / `info` / `warning` / `error` / `critical`)             |
-| `COPAW_MEMORY_COMPACT_THRESHOLD`   | `100000`        | Character threshold to trigger memory compaction                            |
-| `COPAW_MEMORY_COMPACT_KEEP_RECENT` | `3`             | Number of recent messages to keep after compaction                          |
-| `COPAW_MEMORY_COMPACT_RATIO`       | `0.7`           | Threshold ratio for triggering compaction (relative to context window size) |
-| `COPAW_CONSOLE_STATIC_DIR`         | _(auto-detect)_ | Console frontend static files path                                          |
+| `COCO_LOG_LEVEL`                  | `info`          | Log level (`debug` / `info` / `warning` / `error` / `critical`)             |
+| `COCO_MEMORY_COMPACT_THRESHOLD`   | `100000`        | Character threshold to trigger memory compaction                            |
+| `COCO_MEMORY_COMPACT_KEEP_RECENT` | `3`             | Number of recent messages to keep after compaction                          |
+| `COCO_MEMORY_COMPACT_RATIO`       | `0.7`           | Threshold ratio for triggering compaction (relative to context window size) |
+| `COCO_CONSOLE_STATIC_DIR`         | _(auto-detect)_ | Console frontend static files path                                          |
 
 **Security & Authentication:**
 
 | Variable                   | Default | Description                                        |
 | -------------------------- | ------- | -------------------------------------------------- |
-| `COPAW_AUTH_ENABLED`       | `false` | Whether to enable Web console login authentication |
-| `COPAW_AUTH_USERNAME`      | -       | Admin username for auto-registration (optional)    |
-| `COPAW_AUTH_PASSWORD`      | -       | Admin password for auto-registration (optional)    |
-| `COPAW_TOOL_GUARD_ENABLED` | `true`  | Whether to enable tool guard                       |
-| `COPAW_SKILL_SCAN_MODE`    | `warn`  | Skill scanning mode (`block` / `warn` / `off`)     |
+| `COCO_AUTH_ENABLED`       | `false` | Whether to enable Web console login authentication |
+| `COCO_AUTH_USERNAME`      | -       | Admin username for auto-registration (optional)    |
+| `COCO_AUTH_PASSWORD`      | -       | Admin password for auto-registration (optional)    |
+| `COCO_TOOL_GUARD_ENABLED` | `true`  | Whether to enable tool guard                       |
+| `COCO_SKILL_SCAN_MODE`    | `warn`  | Skill scanning mode (`block` / `warn` / `off`)     |
 
 **Memory & Retrieval:**
 
@@ -127,12 +127,12 @@ You can customize paths and behavior via environment variables:
 Example — use a different working dir for this shell:
 
 ```bash
-export COPAW_WORKING_DIR=/home/me/my_copaw
-copaw app
+export COCO_WORKING_DIR=/home/me/my_coco
+coco app
 ```
 
 Config, HEARTBEAT, jobs, memory, etc. will be read/written under
-`/home/me/my_copaw`.
+`/home/me/my_coco`.
 
 ---
 
@@ -140,8 +140,8 @@ Config, HEARTBEAT, jobs, memory, etc. will be read/written under
 
 Starting from **v0.1.0**, configuration is split into two layers:
 
-1. **Global config** - `~/.copaw/config.json` (providers, environment variables, agent list)
-2. **Agent config** - `~/.copaw/workspaces/{agent_id}/agent.json` (per-agent settings)
+1. **Global config** - `~/.coco/config.json` (providers, environment variables, agent list)
+2. **Agent config** - `~/.coco/workspaces/{agent_id}/agent.json` (per-agent settings)
 
 ### Global config.json
 
@@ -180,8 +180,8 @@ Stores globally shared configuration:
 | --------------------- | -------------- | ------------------- | ----------------------------------------------------------------- |
 | `agents.active_agent` | string         | `"default"`         | Currently active agent ID                                         |
 | `agents.profiles`     | object         | `{}`                | Agent profile references (key is agent_id)                        |
-| `last_api.host`       | string \| null | `null`              | Host address from last `copaw app` start                          |
-| `last_api.port`       | int \| null    | `null`              | Port from last `copaw app` start                                  |
+| `last_api.host`       | string \| null | `null`              | Host address from last `coco app` start                          |
+| `last_api.port`       | int \| null    | `null`              | Port from last `coco app` start                                  |
 | `show_tool_details`   | bool           | `true`              | Whether to show tool call/return details in channel messages      |
 | `user_timezone`       | string         | _(system timezone)_ | IANA timezone name (e.g., `"Asia/Shanghai"`)                      |
 | `last_dispatch`       | object \| null | `null`              | Last message dispatch target (used for heartbeat `target="last"`) |
@@ -194,18 +194,18 @@ Stores globally shared configuration:
 | `name`          | string | Yes      | Agent display name                                                          |
 | `description`   | string | No       | Agent description (used for multi-agent collaboration)                      |
 | `enabled`       | bool   | Yes      | Whether to enable this agent                                                |
-| `workspace_dir` | string | No       | Workspace path (optional, defaults to `$COPAW_WORKING_DIR/workspaces/{id}`) |
+| `workspace_dir` | string | No       | Workspace path (optional, defaults to `$COCO_WORKING_DIR/workspaces/{id}`) |
 
 > **Backward compatibility:** The global config.json still supports `channels`, `mcp`, `tools`, `security` and other fields for backward compatibility with older versions. In multi-agent mode, these configurations should be set in each agent's `agent.json`.
 >
 > **Configuration priority:** The agent's `agent.json` takes precedence over the global `config.json`. When the same field is configured in both places, the system uses the value from `agent.json`. For multi-agent mode, it's recommended to put all configurations in each agent's `agent.json`.
 
-> **Model provider configuration** is stored in `$COPAW_SECRET_DIR/providers.json` (default `~/.copaw.secret/providers.json`).
-> **Environment variables** are stored in `$COPAW_SECRET_DIR/envs.json` (default `~/.copaw.secret/envs.json`).
+> **Model provider configuration** is stored in `$COCO_SECRET_DIR/providers.json` (default `~/.coco.secret/providers.json`).
+> **Environment variables** are stored in `$COCO_SECRET_DIR/envs.json` (default `~/.coco.secret/envs.json`).
 
 ### Agent config (agent.json)
 
-Each agent has an independent `agent.json` in its workspace directory (`~/.copaw/workspaces/{agent_id}/`) that stores all of its configuration (channels, tools, heartbeat, MCP, security, etc.). This allows different agents to have completely different configurations without interfering with each other.
+Each agent has an independent `agent.json` in its workspace directory (`~/.coco/workspaces/{agent_id}/`) that stores all of its configuration (channels, tools, heartbeat, MCP, security, etc.). This allows different agents to have completely different configurations without interfering with each other.
 
 ```json
 {
@@ -521,9 +521,9 @@ Auto-updated; no manual configuration needed.
 
 ## Model Providers
 
-CoPaw needs an LLM provider to work. You can set it up in three ways:
+CoCo needs an LLM provider to work. You can set it up in three ways:
 
-- **`copaw init`** — interactive wizard, the easiest way
+- **`coco init`** — interactive wizard, the easiest way
 - **Console UI** — in Settings → Models page
 - **API** — `PUT /providers/{id}` and `PUT /providers/active_llm`
 
@@ -531,7 +531,7 @@ CoPaw needs an LLM provider to work. You can set it up in three ways:
 
 | Provider                     | ID                      | Default Base URL                                    | API Key Prefix |
 | ---------------------------- | ----------------------- | --------------------------------------------------- | -------------- |
-| CoPaw Local                  | `copaw-local`           | _(local)_                                           | _(none)_       |
+| CoCo Local                  | `coco-local`           | _(local)_                                           | _(none)_       |
 | Ollama                       | `ollama`                | `http://localhost:11434`                            | _(none)_       |
 | LM Studio                    | `lmstudio`              | `http://localhost:1234/v1`                          | _(none)_       |
 | ModelScope                   | `modelscope`            | `https://api-inference.modelscope.cn/v1`            | `ms`           |
@@ -566,11 +566,11 @@ Then choose which provider + model to activate:
 | `provider_id` | Which provider to use (e.g. `dashscope`) |
 | `model`       | Which model to use (e.g. `qwen3-max`)    |
 
-> **Tip:** Run `copaw init` and follow the prompts — it will list available
+> **Tip:** Run `coco init` and follow the prompts — it will list available
 > models for each provider so you can pick one directly.
 >
 > **Note:** You are responsible for ensuring the API key and base URL are valid.
-> CoPaw does not verify whether the key is correct or has sufficient quota —
+> CoCo does not verify whether the key is correct or has sufficient quota —
 > make sure the chosen provider and model are accessible.
 
 ---
@@ -580,7 +580,7 @@ Then choose which provider + model to activate:
 Some tools and MCP services need extra API keys (e.g. `TAVILY_API_KEY` for web search). You can
 manage them in three ways:
 
-- **`copaw init`** — prompts "Configure environment variables?" during setup
+- **`coco init`** — prompts "Configure environment variables?" during setup
 - **Console UI** — edit on the settings page
 - **API** — `GET/PUT/DELETE /envs`
 
@@ -588,7 +588,7 @@ Set variables are auto-loaded at app startup, so all tools and child processes
 can read them via `os.environ`.
 
 > **Note:** You are responsible for ensuring the values (e.g. third-party API
-> keys) are valid. CoPaw only stores and injects them — it does not verify
+> keys) are valid. CoCo only stores and injects them — it does not verify
 > correctness.
 
 ---
@@ -599,18 +599,18 @@ Skills extend the agent's capabilities. Skill files are distributed across two l
 
 | Directory                                | Purpose                                           |
 | ---------------------------------------- | ------------------------------------------------- |
-| `~/.copaw/skill_pool/`                   | Local shared pool for built-ins and shared skills |
-| `~/.copaw/workspaces/{agent_id}/skills/` | Skills present in a specific agent's workspace    |
+| `~/.coco/skill_pool/`                   | Local shared pool for built-ins and shared skills |
+| `~/.coco/workspaces/{agent_id}/skills/` | Skills present in a specific agent's workspace    |
 
 Each skill is a directory with a `SKILL.md` file (YAML front matter with `name` and `description`), and optional `references/` and `scripts/` subdirectories.
 
-Skill enabled state and configuration are controlled by `~/.copaw/workspaces/{agent_id}/skill.json`.
+Skill enabled state and configuration are controlled by `~/.coco/workspaces/{agent_id}/skill.json`.
 
 **Manage skills via:**
 
 - Console (Agent → Skills) — Visual management, import, create, enable/disable
-- `copaw init` (choose all / none / custom during setup)
-- `copaw skills config` (interactive toggle)
+- `coco init` (choose all / none / custom during setup)
+- `coco skills config` (interactive toggle)
 
 See [Skills](./skills) for detailed documentation.
 
@@ -618,14 +618,14 @@ See [Skills](./skills) for detailed documentation.
 
 ## Memory
 
-CoPaw has persistent cross-conversation memory: it automatically compresses context and saves key information to Markdown files for long-term retention.
+CoCo has persistent cross-conversation memory: it automatically compresses context and saves key information to Markdown files for long-term retention.
 
 Memory files are stored in the agent workspace:
 
 | File / Directory                                      | Purpose                                                               |
 | ----------------------------------------------------- | --------------------------------------------------------------------- |
-| `~/.copaw/workspaces/{agent_id}/MEMORY.md`            | Long-lived key information (decisions, preferences, persistent facts) |
-| `~/.copaw/workspaces/{agent_id}/memory/YYYY-MM-DD.md` | Daily logs (notes, runtime context, auto-generated summaries)         |
+| `~/.coco/workspaces/{agent_id}/MEMORY.md`            | Long-lived key information (decisions, preferences, persistent facts) |
+| `~/.coco/workspaces/{agent_id}/memory/YYYY-MM-DD.md` | Daily logs (notes, runtime context, auto-generated summaries)         |
 
 ### Embedding Configuration
 
@@ -645,13 +645,13 @@ Recommended to configure in `agent.json` under `running.embedding_config`, which
 
 ## Summary
 
-- Everything lives under **`~/.copaw`** by default; override with `COPAW_WORKING_DIR` (and related env vars) if needed.
+- Everything lives under **`~/.coco`** by default; override with `COCO_WORKING_DIR` (and related env vars) if needed.
 - From **v0.1.0**, configuration is split into:
-  - **Global config** (`~/.copaw/config.json`) — providers, environment variables, agent list
-  - **Agent config** (`~/.copaw/workspaces/{agent_id}/agent.json`) — per-agent settings
+  - **Global config** (`~/.coco/config.json`) — providers, environment variables, agent list
+  - **Agent config** (`~/.coco/workspaces/{agent_id}/agent.json`) — per-agent settings
 - Daily management is primarily done through the **Console**, or by directly editing configuration files.
 - Agent personality is defined by Markdown files in the workspace directory. See [Agent Persona](./persona) for details.
-- LLM providers are globally configured via `copaw init` or the Console.
+- LLM providers are globally configured via `coco init` or the Console.
 - Config changes are **auto-reloaded** without restart (polled every 2 seconds).
 - Call the Agent API: **POST** `/api/agent/process` with `X-Agent-Id` header, JSON body, SSE streaming; see [Quick start — Verify install](./quickstart#verify-install-optional) for examples.
 

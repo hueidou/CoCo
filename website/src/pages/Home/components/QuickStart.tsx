@@ -28,17 +28,17 @@ type ScriptPlatform = "mac" | "windows";
 type ScriptWindowsVariant = "cmd" | "ps";
 type CloudPlatform = "aliyun" | "modelscope";
 
-type CopawQuickStartProps = {
+type CocoQuickStartProps = {
   docsBase: string;
 };
 
-const DOCKER_IMAGE = "agentscope/copaw:latest";
+const DOCKER_IMAGE = "agentscope/coco:latest";
 const MODELSCOPE_URL =
-  "https://modelscope.cn/studios/fork?target=AgentScope/CoPaw";
+  "https://modelscope.cn/studios/fork?target=AgentScope/CoCo";
 const ALIYUN_ECS_URL =
   "https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-1ed84201799f40879884";
 const ALIYUN_DOC_URL = "https://developer.aliyun.com/article/1713682";
-const DESKTOP_RELEASES_URL = "https://github.com/agentscope-ai/CoPaw/releases";
+const DESKTOP_RELEASES_URL = "https://github.com/agentscope-ai/CoCo/releases";
 
 const METHOD_ORDER: InstallMethod[] = [
   "pip",
@@ -68,33 +68,33 @@ function MethodTabIcon({ method }: { method: InstallMethod }) {
 }
 
 export const PIP_INSTALL_COMMANDS = [
-  "pip install copaw",
-  "copaw init --defaults",
-  "copaw app",
+  "pip install coco",
+  "coco init --defaults",
+  "coco app",
 ] as const;
 
 const COMMANDS = {
   pip: [...PIP_INSTALL_COMMANDS],
   scriptMac: [
-    "curl -fsSL https://copaw.agentscope.io/install.sh | bash",
-    "copaw init --defaults",
-    "copaw app",
+    "curl -fsSL https://coco.agentscope.io/install.sh | bash",
+    "coco init --defaults",
+    "coco app",
   ],
   scriptWinCmd: [
-    "curl -fsSL https://copaw.agentscope.io/install.bat -o install.bat && install.bat",
-    "copaw init --defaults",
-    "copaw app",
+    "curl -fsSL https://coco.agentscope.io/install.bat -o install.bat && install.bat",
+    "coco init --defaults",
+    "coco app",
   ],
   scriptWinPs: [
-    "irm https://copaw.agentscope.io/install.ps1 | iex",
-    "copaw init --defaults",
-    "copaw app",
+    "irm https://coco.agentscope.io/install.ps1 | iex",
+    "coco init --defaults",
+    "coco app",
   ],
   docker: [
     `docker pull ${DOCKER_IMAGE}`,
     `docker run -p 127.0.0.1:8088:8088 \\
-  -v copaw-data:/app/working \\
-  -v copaw-secrets:/app/working.secret \\
+  -v coco-data:/app/working \\
+  -v coco-secrets:/app/working.secret \\
   ${DOCKER_IMAGE}`,
   ],
 } as const;
@@ -221,7 +221,7 @@ function CodeBlock({
   );
 }
 
-export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
+export function CocoQuickStart({ docsBase }: CocoQuickStartProps) {
   const { t } = useTranslation();
   const [selectedMethod, setSelectedMethod] = useState<InstallMethod>("pip");
   const [scriptPlatform, setScriptPlatform] = useState<ScriptPlatform>("mac");
@@ -257,10 +257,10 @@ export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-60px" }}
-        id="copaw-quickstart"
+        id="coco-quickstart"
       >
         <div
-          className="pointer-events-none absolute left-1/2 top-0 h-px w-screen -translate-x-1/2 animate-[copaw-dash-move-right_1s_linear_infinite]"
+          className="pointer-events-none absolute left-1/2 top-0 h-px w-screen -translate-x-1/2 animate-[coco-dash-move-right_1s_linear_infinite]"
           style={{
             background:
               "repeating-linear-gradient(to right, rgba(255,157,77,0.45) 0 8px, transparent 8px 16px)",
@@ -268,7 +268,7 @@ export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
           }}
         />
         <div
-          className="pointer-events-none absolute left-1/2 top-full h-px w-screen -translate-x-1/2 -translate-y-px animate-[copaw-dash-move-left_1s_linear_infinite]"
+          className="pointer-events-none absolute left-1/2 top-full h-px w-screen -translate-x-1/2 -translate-y-px animate-[coco-dash-move-left_1s_linear_infinite]"
           style={{
             background:
               "repeating-linear-gradient(to right, rgba(255,157,77,0.45) 0 8px, transparent 8px 16px)",
@@ -277,7 +277,7 @@ export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
         />
         <div className="relative mx-auto max-w-4xl">
           <div
-            className="pointer-events-none absolute bottom-0 left-4 top-0 w-px md:left-0 animate-[copaw-dash-move-down_1s_linear_infinite]"
+            className="pointer-events-none absolute bottom-0 left-4 top-0 w-px md:left-0 animate-[coco-dash-move-down_1s_linear_infinite]"
             style={{
               background:
                 "repeating-linear-gradient(to bottom, rgba(255,157,77,0.45) 0 8px, transparent 8px 16px)",
@@ -285,7 +285,7 @@ export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
             }}
           />
           <div
-            className="pointer-events-none absolute bottom-0 right-4 top-0 w-px md:right-0 animate-[copaw-dash-move-up_1s_linear_infinite]"
+            className="pointer-events-none absolute bottom-0 right-4 top-0 w-px md:right-0 animate-[coco-dash-move-up_1s_linear_infinite]"
             style={{
               background:
                 "repeating-linear-gradient(to bottom, rgba(255,157,77,0.45) 0 8px, transparent 8px 16px)",
@@ -309,7 +309,7 @@ export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
             </motion.div>
             <div className="relative isolate mx-auto max-w-4xl">
               <div
-                className="pointer-events-none absolute left-1/2 top-0 z-20 h-px w-screen -translate-x-1/2 animate-[copaw-dash-move-left_1s_linear_infinite]"
+                className="pointer-events-none absolute left-1/2 top-0 z-20 h-px w-screen -translate-x-1/2 animate-[coco-dash-move-left_1s_linear_infinite]"
                 style={{
                   background:
                     "repeating-linear-gradient(to right, rgba(255,157,77,0.45) 0 8px, transparent 8px 16px)",
@@ -605,7 +605,7 @@ export function CopawQuickStart({ docsBase }: CopawQuickStartProps) {
                 </motion.div>
               </div>
               <div
-                className="pointer-events-none absolute bottom-0 left-1/2 h-px w-screen -translate-x-1/2 animate-[copaw-dash-move-right_1s_linear_infinite]"
+                className="pointer-events-none absolute bottom-0 left-1/2 h-px w-screen -translate-x-1/2 animate-[coco-dash-move-right_1s_linear_infinite]"
                 style={{
                   background:
                     "repeating-linear-gradient(to right, rgba(255,157,77,0.45) 0 8px, transparent 8px 16px)",

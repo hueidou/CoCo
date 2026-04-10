@@ -379,7 +379,7 @@ Example: `/model openai:gpt-4o`
 
 - 🖼️ - 支持图片输入
 - 🎥 - 支持视频输入
-- _(user-added)_ - 用户手动添加的模型（通过 `copaw models add-model` 命令）
+- _(user-added)_ - 用户手动添加的模型（通过 `coco models add-model` 命令）
 
 ---
 
@@ -481,9 +481,9 @@ Use `/model openai:gpt-4o` to switch to this model.
 
 ## 系统控制命令
 
-控制和监控 CoPaw 运行状态的命令，无需通过 Agent 理解意图，直接执行。
+控制和监控 CoCo 运行状态的命令，无需通过 Agent 理解意图，直接执行。
 
-可在对话中发送 `/daemon <子命令>` 或短名（如 `/status`），也可在终端执行 `copaw daemon <子命令>`。
+可在对话中发送 `/daemon <子命令>` 或短名（如 `/status`），也可在终端执行 `coco daemon <子命令>`。
 
 | 命令                                | 说明                                                                       | 对话 | 终端 |
 | ----------------------------------- | -------------------------------------------------------------------------- | ---- | ---- |
@@ -493,7 +493,7 @@ Use `/model openai:gpt-4o` to switch to this model.
 | `/daemon restart` 或 `/restart`     | 零停机重载（对话中）；终端中打印说明                                       | ✅   | ✅   |
 | `/daemon reload-config`             | 重新读取并校验配置文件                                                     | ✅   | ✅   |
 | `/daemon version`                   | 版本号、工作目录与日志路径                                                 | ✅   | ✅   |
-| `/daemon logs` 或 `/daemon logs 50` | 查看最近 N 行日志（默认 100 行，最大 2000 行，来自工作目录下 `copaw.log`） | ✅   | ✅   |
+| `/daemon logs` 或 `/daemon logs 50` | 查看最近 N 行日志（默认 100 行，最大 2000 行，来自工作目录下 `coco.log`） | ✅   | ✅   |
 | `/daemon approve`                   | 批准待审的工具调用（工具审批场景）                                         | ✅   | ❌   |
 
 ---
@@ -521,7 +521,7 @@ Use `/model openai:gpt-4o` to switch to this model.
 
 ```
 /status                    # 在对话中
-copaw daemon status        # 在终端
+coco daemon status        # 在终端
 ```
 
 ---
@@ -534,7 +534,7 @@ copaw daemon status        # 在终端
 
 ```
 /restart                   # 在对话中
-copaw daemon restart       # 在终端（仅打印说明）
+coco daemon restart       # 在终端（仅打印说明）
 ```
 
 > 💡 **提示**：修改频道或 MCP 配置后，先用 `/daemon reload-config` 验证配置正确性，再用 `/daemon restart` 使其生效。
@@ -549,34 +549,34 @@ copaw daemon restart       # 在终端（仅打印说明）
 
 ```
 /daemon reload-config           # 在对话中
-copaw daemon reload-config      # 在终端
+coco daemon reload-config      # 在终端
 ```
 
 ---
 
 ### `/daemon version` - 版本信息
 
-显示 CoPaw 版本号、工作目录路径、日志文件路径。
+显示 CoCo 版本号、工作目录路径、日志文件路径。
 
 **用法：**
 
 ```
 /daemon version            # 在对话中
-copaw daemon version       # 在终端
+coco daemon version       # 在终端
 ```
 
 ---
 
 ### `/daemon logs` - 查看日志
 
-查看工作目录下 `copaw.log` 的最近 N 行日志。默认 100 行，最大 2000 行。
+查看工作目录下 `coco.log` 的最近 N 行日志。默认 100 行，最大 2000 行。
 
 **用法：**
 
 ```
 /daemon logs               # 默认 100 行
 /daemon logs 50            # 指定 50 行
-copaw daemon logs -n 200   # 在终端指定 200 行
+coco daemon logs -n 200   # 在终端指定 200 行
 ```
 
 > 💡 **提示**：日志文件较大时，此命令只读取文件末尾最多 512KB 内容，确保响应速度。
@@ -602,16 +602,16 @@ copaw daemon logs -n 200   # 在终端指定 200 行
 所有 daemon 命令都支持在终端中使用（除 `/stop` 和 `/daemon approve` 仅在对话中有效）：
 
 ```bash
-copaw daemon status
-copaw daemon restart
-copaw daemon reload-config
-copaw daemon version
-copaw daemon logs -n 50
+coco daemon status
+coco daemon restart
+coco daemon reload-config
+coco daemon version
+coco daemon logs -n 50
 ```
 
 **多智能体支持：** 所有终端命令都支持 `--agent-id` 参数（默认为 `default`）。
 
 ```bash
-copaw daemon status --agent-id abc123
-copaw daemon version --agent-id abc123
+coco daemon status --agent-id abc123
+coco daemon version --agent-id abc123
 ```
