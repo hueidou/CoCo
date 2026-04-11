@@ -14,6 +14,7 @@ CoCo 系统从单用户模式扩展为完整的多用户平台，实现了基于
 | 纯多用户模式 | 移除单用户向后兼容，`MULTI_USER_ENABLED` 硬编码为 `True` |
 | 密码安全升级 | 移除 SHA-256 兼容，统一使用 bcrypt（成本因子 12） |
 | 审计日志 | 数据库级审计记录，覆盖登录/注册/密码变更等操作 |
+| 分层频道配置 | Agent 级配置（enabled/visible_to_user）+ 用户级配置（其余字段），后端合并返回 |
 | copaw → coco 重命名 | 全项目品牌和命名空间迁移 |
 
 ### 1.2 设计原则
@@ -126,6 +127,7 @@ admin (2) → 继承 user (1)
 | 定时任务 | `/api/cron/jobs/{job_id}/pause\|resume\|run` | POST |
 | 消息发送 | `/api/messages/send` | POST |
 | 用户偏好 | `/api/config/user-timezone` | PUT |
+| 频道配置 | `/api/config/channels/{channel_name}` | PUT |
 | UI 偏好 | `/api/settings/language` | PUT |
 | 工作区 | `/api/workspace/upload` | POST |
 
@@ -138,7 +140,7 @@ admin (2) → 继承 user (1)
 | Skills | 技能模块对 user 角色完全不可见 |
 | Agent 工作区文件 | `PUT /api/agents/{agentId}/files/{filename}` 为 admin 专属 |
 | Providers/Models | LLM 提供商和模型配置 |
-| Channels | 渠道配置写入 |
+| Channels | 渠道配置写入（admin 写 agent 级全部字段；user 仅写用户级字段，enabled/visible_to_user 被忽略） |
 | Users | 用户管理 CRUD |
 | Security | 安全配置 |
 | Tools | 工具管理 |
@@ -217,6 +219,7 @@ HTTP 410 (Gone) 明确表示这些端点曾经存在，现已永久移除。
 | `UserSession` | `user_sessions` | id, user_id, session_token, user_agent, ip_address, expires_at, last_activity |
 | `Permission` | `permissions` | id, name (unique), description, enabled |
 | `RolePermission` | `role_permissions` | id, role, permission_id |
+| `UserChannelOverride` | `user_channel_overrides` | id, user_id, agent_id, channel_key, overrides (JSON), created_at, updated_at |
 | `AuditLog` | `audit_logs` | id, user_id, username, event_type, event_action, event_description, ip_address, user_agent, success, additional_data (JSON) |
 
 #### 3.7.2 仓储层 (`repository.py`)
@@ -226,6 +229,7 @@ HTTP 410 (Gone) 明确表示这些端点曾经存在，现已永久移除。
 | `UserRepository` | get_by_id, get_by_username, get_by_email, get_by_oidc_id, get_all_users(分页), create_user, update_user, update_last_login, delete_user(软删除), count_users, search_users |
 | `SessionRepository` | create_session, get_session, update_session_activity, delete_session, delete_user_sessions, cleanup_expired_sessions |
 | `PermissionRepository` | get_permission, get_permission_by_name, get_role_permissions, user_has_permission（admin 绕过所有检查） |
+| `UserChannelRepo` | get_overrides, get_all_overrides, save_overrides（自动剥离 agent 级字段）, delete_overrides |
 
 #### 3.7.3 数据库初始化 (`initializer.py`)
 
@@ -244,6 +248,86 @@ HTTP 410 (Gone) 明确表示这些端点曾经存在，现已永久移除。
 | `log_user_update` | user_updated |
 
 > 注意：审计服务已创建但尚未在路由处理器中集成调用，需后续接入。
+
+### 3.8 分层频道配置
+
+频道配置分为 **agent 级**和**用户级**两层，实现 admin 控制全局设置、user 自定义个人偏好的分层管理。
+
+#### 3.8.1 设计背景
+
+频道进程（微信长轮询、钉钉 webhook 等）是系统级运行的——进程要么启动要么不启动，不存在"对用户 A 启动、对用户 B 不启动"的情况。因此 `enabled` 和 `visible_to_user` 必须是 agent 级配置，由 admin 统一控制。
+
+但其他配置（`bot_prefix`、`dm_policy`、`allow_from` 等）可以按用户独立设置，例如不同用户使用不同的 DM 策略和允许列表。
+
+#### 3.8.2 字段分层
+
+| 层级 | 字段 | 存储位置 | 控制者 |
+|------|------|----------|--------|
+| Agent 级 | `enabled` | `agent.json` | admin |
+| Agent 级 | `visible_to_user` | `agent.json` | admin |
+| 用户级 | `bot_prefix` | `coco_users.db` | 各用户独立 |
+| 用户级 | `dm_policy` | `coco_users.db` | 各用户独立 |
+| 用户级 | `group_policy` | `coco_users.db` | 各用户独立 |
+| 用户级 | `allow_from` | `coco_users.db` | 各用户独立 |
+| 用户级 | `deny_message` | `coco_users.db` | 各用户独立 |
+| 用户级 | `require_mention` | `coco_users.db` | 各用户独立 |
+| 用户级 | `filter_tool_messages` | `coco_users.db` | 各用户独立 |
+| 用户级 | `filter_thinking` | `coco_users.db` | 各用户独立 |
+| 用户级 | 频道特有字段 | `coco_users.db` | 各用户独立 |
+
+> `AGENT_LEVEL_FIELDS = frozenset({"enabled", "visible_to_user"})` 定义了 agent 级字段集合，在 `user_channel_repo.py` 中维护。
+
+#### 3.8.3 API 行为
+
+**GET 端点**（`/api/config/channels`、`/api/config/channels/{channel_name}`）：
+
+- admin：直接返回 `agent.json` 中的配置
+- user：合并 agent 级基础配置 + 用户级覆盖（`_merge_user_overrides()`），agent 级字段始终来自基础配置
+- 非法访问：`visible_to_user=False` 的频道对 user 角色返回 404
+
+**PUT 端点**（`/api/config/channels/{channel_name}`）：
+
+- admin：全量写入 `agent.json`（现有行为）
+- user：提取非 agent 级字段 → 存入 `user_channel_overrides` 表；`enabled` 和 `visible_to_user` 被自动忽略
+
+#### 3.8.4 合并逻辑示例
+
+Agent 级配置（`agent.json`）：
+```json
+{"dingtalk": {"enabled": true, "visible_to_user": true, "bot_prefix": "", "dm_policy": "open"}}
+```
+
+用户级覆盖（`coco_users.db`）：
+```json
+{"bot_prefix": "@coco", "dm_policy": "allowlist", "allow_from": ["user123"]}
+```
+
+合并结果返回给 user：
+```json
+{"enabled": true, "bot_prefix": "@coco", "dm_policy": "allowlist", "allow_from": ["user123"]}
+```
+
+注意：`visible_to_user` 不返回给非 admin（已在过滤逻辑中处理）。
+
+#### 3.8.5 数据模型
+
+```sql
+CREATE TABLE user_channel_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,           -- JWT sub (username)
+    agent_id TEXT NOT NULL DEFAULT 'default',
+    channel_key TEXT NOT NULL,       -- e.g. "dingtalk", "telegram"
+    overrides TEXT NOT NULL,         -- JSON: {"bot_prefix": "@bot", "dm_policy": "allowlist"}
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, agent_id, channel_key)
+);
+```
+
+- `overrides` 只存用户修改过的非 agent 级字段
+- UNIQUE 约束确保每个用户在每个 agent 的每个频道只有一条记录
+- `save_overrides()` 自动剥离 `enabled` 和 `visible_to_user`，只存用户级字段
+- 若剥离后无有效字段，自动删除该记录
 
 ---
 
@@ -351,6 +435,7 @@ SQLite（`{WORKING_DIR}/coco_users.db`），使用 SQLAlchemy 的 `StaticPool` +
 ```
 User 1──* UserSession
 User 1──* AuditLog
+UserChannelOverride (独立，按 user_id 关联)
 
 Permission *──* Role (通过 RolePermission)
 ```
@@ -443,8 +528,9 @@ src/coco/
 │   │   └── users.py               # 用户管理 CRUD API
 ├── db/
 │   ├── __init__.py                # 导出 SessionLocal, UserRepository 等
-│   ├── models.py                  # User, UserSession, Permission, RolePermission, AuditLog
+│   ├── models.py                  # User, UserSession, Permission, RolePermission, UserChannelOverride, AuditLog
 │   ├── repository.py              # UserRepository, SessionRepository, PermissionRepository
+│   ├── user_channel_repo.py       # UserChannelRepo（用户频道配置仓储）
 │   ├── session.py                 # SQLAlchemy 引擎和会话工厂
 │   ├── initializer.py             # 数据库初始化和种子数据
 │   ├── audit_service.py           # 审计日志服务
