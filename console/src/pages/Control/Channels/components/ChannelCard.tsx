@@ -20,6 +20,7 @@ export const ChannelCard = React.memo(function ChannelCard({
   const [isHover, setIsHover] = useState(false);
   const enabled = Boolean(config.enabled);
   const isBuiltin = Boolean(config.isBuiltin);
+  const visibleToUser = config.visible_to_user !== false;
   const label = getChannelLabel(channelKey, t);
   const getConfigString = (key: string) =>
     typeof config[key] === "string" ? config[key] : "";
@@ -52,19 +53,29 @@ export const ChannelCard = React.memo(function ChannelCard({
       {/* Top section: Icon and Status */}
       <div className={styles.cardTopSection}>
         <div className={styles.channelIcon}>{getChannelIcon()}</div>
-        <div className={styles.statusIndicator}>
-          <div
-            className={`${styles.statusDot} ${
-              enabled ? styles.enabled : styles.disabled
-            }`}
-          />
-          <span
-            className={`${styles.statusText} ${
-              enabled ? styles.enabled : styles.disabled
-            }`}
-          >
-            {enabled ? t("common.enabled") : t("common.disabled")}
-          </span>
+        <div className={styles.statusIndicators}>
+          <div className={styles.statusIndicator}>
+            <div
+              className={`${styles.statusDot} ${
+                enabled ? styles.enabled : styles.disabled
+              }`}
+            />
+            <span
+              className={`${styles.statusText} ${
+                enabled ? styles.enabled : styles.disabled
+              }`}
+            >
+              {enabled ? t("common.enabled") : t("common.disabled")}
+            </span>
+          </div>
+          {!visibleToUser && (
+            <div className={styles.statusIndicator}>
+              <div className={`${styles.statusDot} ${styles.hidden}`} />
+              <span className={`${styles.statusText} ${styles.hidden}`}>
+                {t("channels.hiddenFromUser")}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -12,11 +12,12 @@ import { Alert, ConfigProvider, Spin } from "antd";
 import { LinkOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import type { FormInstance } from "antd";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { getChannelLabel, type ChannelKey } from "./constants";
 import { useChannelQrcode } from "./useChannelQrcode";
 import styles from "../index.module.less";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import api from "../../../../api";
 
 const CHANNELS_WITH_ACCESS_CONTROL: ChannelKey[] = [
   "telegram",
@@ -81,6 +82,7 @@ const BASE_FIELDS = [
   "filter_tool_messages",
   "filter_thinking",
   "isBuiltin",
+  "visible_to_user",
 ];
 
 interface ChannelDrawerProps {
@@ -111,6 +113,39 @@ export function ChannelDrawer({
   const currentLang = i18n.language?.startsWith("zh") ? "zh" : "en";
   const label = activeKey ? getChannelLabel(activeKey, t) : activeLabel;
   const { message } = useAppMessage();
+
+  // Independent visible_to_user state (outside form, no validation interference)
+  const isAdmin = (() => {
+    try {
+      const token = localStorage.getItem("coco_auth_token");
+      if (!token) return false;
+      const payload = JSON.parse(atob(token.split(".")[0]));
+      return payload.role === "admin";
+    } catch { return false; }
+  })();
+  const [visibleToUser, setVisibleToUser] = useState(
+    initialValues?.visible_to_user !== false,
+  );
+  const [savingVisibility, setSavingVisibility] = useState(false);
+
+  const handleVisibilityChange = async (checked: boolean) => {
+    if (!activeKey) return;
+    setVisibleToUser(checked);
+    setSavingVisibility(true);
+    try {
+      const existing = await api.getChannelConfig(activeKey);
+      await api.updateChannelConfig(activeKey, {
+        ...(typeof existing === "object" && existing !== null ? existing : {}),
+        visible_to_user: checked,
+      } as Parameters<typeof api.updateChannelConfig>[1]);
+      message.success(t("channels.configSaved"));
+    } catch {
+      setVisibleToUser(!checked); // rollback
+      message.error(t("channels.configFailed"));
+    } finally {
+      setSavingVisibility(false);
+    }
+  };
 
   // WeChat QR code hook
   const weixinQrcode = useChannelQrcode({
@@ -985,12 +1020,13 @@ export function ChannelDrawer({
       footer={drawerFooter}
     >
       {activeKey && (
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={initialValues}
-          onFinish={onSubmit}
-        >
+        <>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={initialValues}
+            onFinish={onSubmit}
+          >
           <Form.Item
             name="enabled"
             label={t("common.enabled")}
@@ -1033,6 +1069,27 @@ export function ChannelDrawer({
           {CHANNELS_WITH_ACCESS_CONTROL.includes(activeKey) &&
             renderAccessControlFields()}
         </Form>
+
+        {isAdmin && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 0",
+              borderTop: "1px solid var(--ant-color-border)",
+              marginTop: 16,
+            }}
+          >
+            <span>{t("channels.visibleToUser")}</span>
+            <Switch
+              checked={visibleToUser}
+              onChange={handleVisibilityChange}
+              loading={savingVisibility}
+            />
+          </div>
+        )}
+        </>
       )}
     </Drawer>
   );

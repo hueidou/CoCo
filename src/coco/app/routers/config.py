@@ -35,14 +35,63 @@ from ...config.config import (
     VoiceChannelConfig,
     WecomConfig,
 )
-
 from .schemas_config import HeartbeatBody
 from ..channels.qrcode_auth_handler import (
     QRCODE_AUTH_HANDLERS,
     generate_qrcode_image,
 )
+from ...db import SessionLocal, UserChannelRepo
+from ...db.user_channel_repo import AGENT_LEVEL_FIELDS
 
 router = APIRouter(prefix="/config", tags=["config"])
+
+
+def _is_channel_visible(channel_data: Any, key: str) -> bool:
+    """Check if a channel is visible to non-admin users.
+
+    Returns True if visible_to_user is True or not set (default).
+    Handles both dict (plugin/custom) and Pydantic model channel data.
+    """
+    if channel_data is None:
+        return True  # No config saved yet, default visible
+    if isinstance(channel_data, dict):
+        return channel_data.get("visible_to_user", True)
+    return getattr(channel_data, "visible_to_user", True)
+
+
+def _to_dict(channel_data: Any) -> dict:
+    """Convert channel config (dict or Pydantic model) to a plain dict."""
+    if channel_data is None:
+        return {}
+    if isinstance(channel_data, dict):
+        return dict(channel_data)
+    if hasattr(channel_data, "model_dump"):
+        return channel_data.model_dump()
+    return dict(channel_data)
+
+
+def _merge_user_overrides(agent_config: dict, user_overrides: Optional[dict]) -> dict:
+    """Merge agent-level base config with user-level overrides.
+
+    Agent-level fields (visible_to_user) always come from the agent config
+    and cannot be overridden by user-level data.
+    """
+    merged = dict(agent_config)
+    if user_overrides:
+        for k, v in user_overrides.items():
+            if k not in AGENT_LEVEL_FIELDS:
+                merged[k] = v
+    return merged
+
+
+def _get_all_channels_dict(channels_config) -> dict:
+    """Extract all channel configs as a dict from the ChannelsConfig model."""
+    if channels_config is None:
+        return {}
+    all_configs = channels_config.model_dump()
+    extra = getattr(channels_config, "__pydantic_extra__", None) or {}
+    all_configs.update(extra)
+    return all_configs
 
 
 _CHANNEL_CONFIG_CLASS_MAP = {
@@ -67,37 +116,50 @@ _CHANNEL_CONFIG_CLASS_MAP = {
     description="Retrieve configuration for all available channels",
 )
 async def list_channels(request: Request) -> dict:
-    """List all channel configs (filtered by available channels)."""
+    """List all channel configs (filtered by available channels).
+
+    Non-admin users only see channels where visible_to_user=True.
+    User-level overrides are merged on top of agent-level defaults.
+    """
     from ..agent_context import get_agent_for_request
 
     agent = await get_agent_for_request(request)
     agent_config = agent.config
     available = get_available_channels()
+    user_role = getattr(request.state, "user_role", "user")
+    user_id = getattr(request.state, "user", "")
 
     # Get channel configs from agent's config (with fallback to empty)
-    channels_config = agent_config.channels
-    if channels_config is None:
-        # No channels config yet, use empty defaults
-        all_configs = {}
-    else:
-        all_configs = channels_config.model_dump()
-        extra = getattr(channels_config, "__pydantic_extra__", None) or {}
-        all_configs.update(extra)
+    all_configs = _get_all_channels_dict(agent_config.channels)
+
+    # Load user-level overrides for non-admin
+    user_overrides_map: dict[str, dict] = {}
+    if user_role != "admin" and user_id:
+        db = SessionLocal()
+        try:
+            repo = UserChannelRepo(db)
+            user_overrides_map = repo.get_all_overrides(user_id, agent.agent_id)
+        finally:
+            db.close()
 
     # Return all available channels (use default config if not saved)
     result = {}
     for key in available:
         if key in all_configs:
-            channel_data = (
-                dict(all_configs[key])
-                if isinstance(all_configs[key], dict)
-                else all_configs[key]
-            )
+            channel_data = _to_dict(all_configs[key])
         else:
             # Channel registered but no config saved yet, use empty default
             channel_data = {"enabled": False, "bot_prefix": ""}
-        if isinstance(channel_data, dict):
-            channel_data["isBuiltin"] = key in BUILTIN_CHANNEL_KEYS
+
+        # Role-based visibility filter
+        if user_role != "admin" and not _is_channel_visible(channel_data, key):
+            continue
+
+        # Merge user-level overrides for non-admin
+        if user_role != "admin" and key in user_overrides_map:
+            channel_data = _merge_user_overrides(channel_data, user_overrides_map[key])
+
+        channel_data["isBuiltin"] = key in BUILTIN_CHANNEL_KEYS
         result[key] = channel_data
 
     return result
@@ -108,9 +170,26 @@ async def list_channels(request: Request) -> dict:
     summary="List channel types",
     description="Return all available channel type identifiers",
 )
-async def list_channel_types() -> List[str]:
-    """Return available channel type identifiers (env-filtered)."""
-    return list(get_available_channels())
+async def list_channel_types(request: Request) -> List[str]:
+    """Return available channel type identifiers (env-filtered + role-filtered)."""
+    available = list(get_available_channels())
+
+    user_role = getattr(request.state, "user_role", "user")
+    if user_role != "admin":
+        from ..agent_context import get_agent_for_request
+
+        agent = await get_agent_for_request(request)
+        channels_config = agent.config.channels
+        if channels_config is not None:
+            all_configs = channels_config.model_dump()
+            extra = getattr(channels_config, "__pydantic_extra__", None) or {}
+            all_configs.update(extra)
+            available = [
+                key for key in available
+                if _is_channel_visible(all_configs.get(key), key)
+            ]
+
+    return available
 
 
 @router.put(
@@ -227,6 +306,31 @@ async def get_channel(
             status_code=404,
             detail=f"Channel '{channel_name}' not found",
         )
+
+    single_channel_config = _to_dict(single_channel_config)
+
+    # Role-based visibility check
+    user_role = getattr(request.state, "user_role", "user")
+    user_id = getattr(request.state, "user", "")
+    if user_role != "admin" and not _is_channel_visible(single_channel_config, channel_name):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel '{channel_name}' not found",
+        )
+
+    # Merge user-level overrides for non-admin
+    if user_role != "admin" and user_id:
+        db = SessionLocal()
+        try:
+            repo = UserChannelRepo(db)
+            overrides = repo.get_overrides(user_id, agent.agent_id, channel_name)
+            if overrides:
+                single_channel_config = _merge_user_overrides(
+                    single_channel_config, overrides
+                )
+        finally:
+            db.close()
+
     return single_channel_config
 
 
@@ -247,8 +351,13 @@ async def put_channel(
         ...,
         description="Updated channel configuration",
     ),
-) -> ChannelConfigUnion:
-    """Update a specific channel config by name."""
+) -> Any:
+    """Update a specific channel config by name.
+
+    Admin: saves all fields to agent-level config (agent.json).
+    User: saves only non-agent-level fields to user-level overrides (SQLite),
+          ignoring enabled and visible_to_user.
+    """
     from ..agent_context import get_agent_for_request
     from ...config.config import save_agent_config
 
@@ -260,26 +369,47 @@ async def put_channel(
         )
 
     agent = await get_agent_for_request(request)
+    user_role = getattr(request.state, "user_role", "user")
+    user_id = getattr(request.state, "user", "")
 
-    # Initialize channels if not exists
-    if agent.config.channels is None:
-        agent.config.channels = ChannelConfig()
+    if user_role == "admin":
+        # Admin: save everything to agent-level config
+        # Initialize channels if not exists
+        if agent.config.channels is None:
+            agent.config.channels = ChannelConfig()
 
-    config_class = _CHANNEL_CONFIG_CLASS_MAP.get(channel_name)
-    if config_class is not None:
-        channel_config = config_class(**single_channel_config)
+        config_class = _CHANNEL_CONFIG_CLASS_MAP.get(channel_name)
+        if config_class is not None:
+            channel_config = config_class(**single_channel_config)
+        else:
+            # For custom channels, just use the dict
+            channel_config = single_channel_config
+
+        setattr(agent.config.channels, channel_name, channel_config)
+        save_agent_config(agent.agent_id, agent.config)
+
+        # Hot reload config (async, non-blocking)
+        schedule_agent_reload(request, agent.agent_id)
+
+        return channel_config
     else:
-        # For custom channels, just use the dict
-        channel_config = single_channel_config
+        # User: save only user-level overrides (strip enabled/visible_to_user)
+        db = SessionLocal()
+        try:
+            repo = UserChannelRepo(db)
+            repo.save_overrides(user_id, agent.agent_id, channel_name, single_channel_config)
+        finally:
+            db.close()
 
-    # Set channel config in agent's config
-    setattr(agent.config.channels, channel_name, channel_config)
-    save_agent_config(agent.agent_id, agent.config)
-
-    # Hot reload config (async, non-blocking)
-    schedule_agent_reload(request, agent.agent_id)
-
-    return channel_config
+        # Return the merged config so the frontend sees the effective result
+        channels = agent.config.channels
+        base_config = _to_dict(
+            getattr(channels, channel_name, None)
+            or (getattr(channels, "__pydantic_extra__", None) or {}).get(channel_name)
+            or {}
+        )
+        merged = _merge_user_overrides(base_config, single_channel_config)
+        return merged
 
 
 @router.get(

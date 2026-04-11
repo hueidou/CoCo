@@ -48,6 +48,7 @@ class BaseChannelConfig(BaseModel):
     allow_from: List[str] = Field(default_factory=list)
     deny_message: str = ""
     require_mention: bool = False
+    visible_to_user: bool = True
 
 
 class IMessageChannelConfig(BaseChannelConfig):

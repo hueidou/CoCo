@@ -91,6 +91,25 @@ class RolePermission(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class UserChannelOverride(Base):
+    """Per-user channel config overrides (non-agent-level fields only)."""
+    __tablename__ = "user_channel_overrides"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(255), nullable=False)  # JWT sub (username)
+    agent_id = Column(String(100), nullable=False, default="default")
+    channel_key = Column(String(100), nullable=False)  # e.g. "dingtalk", "telegram"
+    overrides = Column(Text, nullable=False)  # JSON string
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return (
+            f"<UserChannelOverride(user_id='{self.user_id}', "
+            f"agent_id='{self.agent_id}', channel_key='{self.channel_key}')>"
+        )
+
+
 class AuditLog(Base):
     """Audit log for tracking important system events."""
     __tablename__ = "audit_logs"

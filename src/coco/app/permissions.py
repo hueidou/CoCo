@@ -74,6 +74,7 @@ _USER_WRITABLE_ROUTES: frozenset[tuple[str, str]] = frozenset({
     ("/api/messages/send", "POST"),
     # ── Config: user preferences ──
     ("/api/config/user-timezone", "PUT"),
+    ("/api/config/channels/{channel_name}", "PUT"),
     # ── Settings: UI preferences ──
     ("/api/settings/language", "PUT"),
     # ── Workspace: upload zip ──
@@ -95,6 +96,7 @@ _USER_WRITABLE_ROUTES: frozenset[tuple[str, str]] = frozenset({
     ("/api/agents/{agentId}/cron/jobs/{job_id}/run", "POST"),
     ("/api/agents/{agentId}/messages/send", "POST"),
     ("/api/agents/{agentId}/config/user-timezone", "PUT"),
+    ("/api/agents/{agentId}/config/channels/{channel_name}", "PUT"),
     ("/api/agents/{agentId}/settings/language", "PUT"),
     ("/api/agents/{agentId}/workspace/upload", "POST"),
 })
