@@ -118,8 +118,8 @@ class CronManager:
 
     # ----- read/state -----
 
-    async def list_jobs(self) -> list[CronJobSpec]:
-        return await self._repo.list_jobs()
+    async def list_jobs(self, user_id: Optional[str] = None) -> list[CronJobSpec]:
+        return await self._repo.list_jobs(user_id=user_id)
 
     async def get_job(self, job_id: str) -> Optional[CronJobSpec]:
         return await self._repo.get_job(job_id)

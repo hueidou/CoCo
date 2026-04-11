@@ -1,7 +1,7 @@
 import { createGlobalStyle } from "antd-style";
 import { ConfigProvider, bailianTheme } from "@agentscope-ai/design";
 import { App as AntdApp } from "antd";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import zhCN from "antd/locale/zh_CN";
@@ -21,7 +21,7 @@ import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import LoginPage from "./pages/Login";
 import { authApi } from "./api/modules/auth";
 import { languageApi } from "./api/modules/language";
-import { getApiUrl, getApiToken, clearAuthToken } from "./api/config";
+import { getApiUrl, getApiToken, clearAuthToken, setAuthToken } from "./api/config";
 import "./styles/layout.css";
 import "./styles/form-override.css";
 
@@ -103,6 +103,25 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Handles OIDC callback: extracts token from URL and stores it */
+function OidcCallbackPage() {
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const token = searchParams.get("token");
+    const redirect = searchParams.get("redirect") || "/chat";
+    if (token) {
+      setAuthToken(token);
+      // Full page reload to guarantee clean state (clear SessionApi cache, etc.)
+      window.location.href = redirect;
+    } else {
+      window.location.href = "/login";
+    }
+  }, [searchParams]);
+
+  return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>Logging in...</div>;
+}
+
 function getRouterBasename(pathname: string): string | undefined {
   return /^\/console(?:\/|$)/.test(pathname) ? "/console" : undefined;
 }
@@ -169,6 +188,7 @@ function AppInner() {
         <AntdApp>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/login/callback" element={<OidcCallbackPage />} />
             <Route
               path="/*"
               element={

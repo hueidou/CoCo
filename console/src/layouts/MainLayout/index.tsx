@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Layout, Spin } from "antd";
+import { Layout, Spin, Result } from "antd";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Sidebar from "../Sidebar";
@@ -52,6 +52,26 @@ const AgentsPage = lazyWithRetry(() => import("../../pages/Settings/Agents"));
 
 const { Content } = Layout;
 
+// Admin-only route guard
+function parseRoleFromToken(): string {
+  try {
+    const token = localStorage.getItem("coco_auth_token");
+    if (!token) return "user";
+    const payload = JSON.parse(atob(token.split(".")[0]));
+    return payload.role || "user";
+  } catch {
+    return "user";
+  }
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const role = parseRoleFromToken();
+  if (role !== "admin") {
+    return <Result status="403" title="403" subTitle="Access denied. Admin role required." />;
+  }
+  return <>{children}</>;
+}
+
 const pathToKey: Record<string, string> = {
   "/chat": "chat",
   "/channels": "channels",
@@ -101,21 +121,21 @@ export default function MainLayout() {
                   <Route path="/channels" element={<ChannelsPage />} />
                   <Route path="/sessions" element={<SessionsPage />} />
                   <Route path="/cron-jobs" element={<CronJobsPage />} />
-                  <Route path="/heartbeat" element={<HeartbeatPage />} />
-                  <Route path="/skills" element={<SkillsPage />} />
-                  <Route path="/skill-pool" element={<SkillPoolPage />} />
-                  <Route path="/tools" element={<ToolsPage />} />
-                  <Route path="/mcp" element={<MCPPage />} />
-                  <Route path="/workspace" element={<WorkspacePage />} />
-                  <Route path="/agents" element={<AgentsPage />} />
-                  <Route path="/models" element={<ModelsPage />} />
-                  <Route path="/environments" element={<EnvironmentsPage />} />
-                  <Route path="/agent-config" element={<AgentConfigPage />} />
-                  <Route path="/security" element={<SecurityPage />} />
-                  <Route path="/token-usage" element={<TokenUsagePage />} />
+                  <Route path="/heartbeat" element={<AdminRoute><HeartbeatPage /></AdminRoute>} />
+                  <Route path="/skills" element={<AdminRoute><SkillsPage /></AdminRoute>} />
+                  <Route path="/skill-pool" element={<AdminRoute><SkillPoolPage /></AdminRoute>} />
+                  <Route path="/tools" element={<AdminRoute><ToolsPage /></AdminRoute>} />
+                  <Route path="/mcp" element={<AdminRoute><MCPPage /></AdminRoute>} />
+                  <Route path="/workspace" element={<AdminRoute><WorkspacePage /></AdminRoute>} />
+                  <Route path="/agents" element={<AdminRoute><AgentsPage /></AdminRoute>} />
+                  <Route path="/models" element={<AdminRoute><ModelsPage /></AdminRoute>} />
+                  <Route path="/environments" element={<AdminRoute><EnvironmentsPage /></AdminRoute>} />
+                  <Route path="/agent-config" element={<AdminRoute><AgentConfigPage /></AdminRoute>} />
+                  <Route path="/security" element={<AdminRoute><SecurityPage /></AdminRoute>} />
+                  <Route path="/token-usage" element={<AdminRoute><TokenUsagePage /></AdminRoute>} />
                   <Route
                     path="/voice-transcription"
-                    element={<VoiceTranscriptionPage />}
+                    element={<AdminRoute><VoiceTranscriptionPage /></AdminRoute>}
                   />
                 </Routes>
               </Suspense>

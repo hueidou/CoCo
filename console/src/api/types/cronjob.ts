@@ -41,6 +41,7 @@ export interface CronJobSpecInput {
   dispatch: CronJobDispatch;
   runtime?: CronJobRuntime;
   meta?: Record<string, unknown>;
+  user_id?: string | null;
 }
 
 export type CronJobSpecOutput = CronJobSpecInput;

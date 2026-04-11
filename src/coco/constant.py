@@ -271,3 +271,136 @@ except (TypeError, ValueError):
 # Split output on this marker to recover the original (untruncated) portion:
 #   original = output.split(TRUNCATION_NOTICE_MARKER)[0]
 TRUNCATION_NOTICE_MARKER = "<<<TRUNCATED>>>"
+
+
+# ===========================================================================
+# Multi-user and OIDC configuration
+# ===========================================================================
+
+# Multi-user mode is always enabled (backward compatibility removed)
+MULTI_USER_ENABLED = True
+
+# Database configuration
+DATABASE_URL = f"sqlite:///{WORKING_DIR / 'coco_users.db'}"
+
+# OIDC configuration
+OIDC_ENABLED = EnvVarLoader.get_bool("COCO_OIDC_ENABLED", False)
+OIDC_CLIENT_ID = EnvVarLoader.get_str("COCO_OIDC_CLIENT_ID", "")
+OIDC_CLIENT_SECRET = EnvVarLoader.get_str("COCO_OIDC_CLIENT_SECRET", "")
+OIDC_ISSUER_URL = EnvVarLoader.get_str("COCO_OIDC_ISSUER_URL", "")
+OIDC_REDIRECT_URI = EnvVarLoader.get_str(
+    "COCO_OIDC_REDIRECT_URI",
+    "http://localhost:8080/api/auth/oidc/callback"
+)
+OIDC_SCOPES = EnvVarLoader.get_str(
+    "COCO_OIDC_SCOPES",
+    "openid profile email"
+)
+
+# OIDC endpoints (for backward compatibility)
+# These are derived from issuer_url when available
+OIDC_AUTHORIZATION_ENDPOINT = OIDC_ISSUER_URL.rstrip("/") + "/protocol/openid-connect/auth" if OIDC_ISSUER_URL else ""
+OIDC_TOKEN_ENDPOINT = OIDC_ISSUER_URL.rstrip("/") + "/protocol/openid-connect/token" if OIDC_ISSUER_URL else ""
+OIDC_USERINFO_ENDPOINT = OIDC_ISSUER_URL.rstrip("/") + "/protocol/openid-connect/userinfo" if OIDC_ISSUER_URL else ""
+OIDC_CALLBACK_PATH = "/api/auth/oidc/callback"
+
+# Multiple OIDC providers support
+OIDC_PROVIDERS_JSON = EnvVarLoader.get_str("COCO_OIDC_PROVIDERS", "[]")
+
+def load_oidc_providers():
+    """Load OIDC providers from JSON configuration.
+    
+    Example JSON format:
+    [
+      {
+        "id": "keycloak",
+        "name": "Keycloak",
+        "enabled": true,
+        "client_id": "your-client-id",
+        "client_secret": "your-client-secret",
+        "issuer_url": "https://coco.201609.xyz/auth/realms/coco",
+        "scopes": "openid email profile"
+      }
+    ]
+    """
+    try:
+        import json
+        providers = json.loads(OIDC_PROVIDERS_JSON)
+        # Ensure each provider has all required fields
+        for provider in providers:
+            # Set default values if not provided
+            if "scopes" not in provider:
+                provider["scopes"] = "openid profile email"
+            if "enabled" not in provider:
+                provider["enabled"] = True
+        return providers
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+OIDC_PROVIDERS = load_oidc_providers()
+
+# JWT configuration for multi-user mode
+JWT_TOKEN_EXPIRY_SECONDS = EnvVarLoader.get_int(
+    "COCO_JWT_TOKEN_EXPIRY_SECONDS",
+    7 * 24 * 3600,  # 7 days
+    min_value=300,  # Minimum 5 minutes
+)
+
+# Session configuration
+SESSION_EXPIRY_SECONDS = EnvVarLoader.get_int(
+    "COCO_SESSION_EXPIRY_SECONDS",
+    24 * 3600,  # 24 hours
+    min_value=300,
+)
+
+# Password policies
+PASSWORD_MIN_LENGTH = EnvVarLoader.get_int(
+    "COCO_PASSWORD_MIN_LENGTH",
+    8,
+    min_value=1,
+)
+PASSWORD_REQUIRE_UPPERCASE = EnvVarLoader.get_bool(
+    "COCO_PASSWORD_REQUIRE_UPPERCASE",
+    True,
+)
+PASSWORD_REQUIRE_LOWERCASE = EnvVarLoader.get_bool(
+    "COCO_PASSWORD_REQUIRE_LOWERCASE",
+    True,
+)
+PASSWORD_REQUIRE_DIGITS = EnvVarLoader.get_bool(
+    "COCO_PASSWORD_REQUIRE_DIGITS",
+    True,
+)
+PASSWORD_REQUIRE_SPECIAL = EnvVarLoader.get_bool(
+    "COCO_PASSWORD_REQUIRE_SPECIAL",
+    False,
+)
+
+# Default admin user configuration (for first-time setup)
+DEFAULT_ADMIN_USERNAME = EnvVarLoader.get_str(
+    "COCO_DEFAULT_ADMIN_USERNAME",
+    "admin",
+)
+DEFAULT_ADMIN_EMAIL = EnvVarLoader.get_str(
+    "COCO_DEFAULT_ADMIN_EMAIL",
+    "",
+)
+
+# User registration policy
+ALLOW_REGISTRATION = EnvVarLoader.get_bool("COCO_ALLOW_REGISTRATION", True)
+REQUIRE_EMAIL_VERIFICATION = EnvVarLoader.get_bool(
+    "COCO_REQUIRE_EMAIL_VERIFICATION",
+    False,
+)
+
+# Rate limiting for authentication
+LOGIN_ATTEMPT_LIMIT = EnvVarLoader.get_int(
+    "COCO_LOGIN_ATTEMPT_LIMIT",
+    5,
+    min_value=1,
+)
+LOGIN_ATTEMPT_WINDOW_MINUTES = EnvVarLoader.get_int(
+    "COCO_LOGIN_ATTEMPT_WINDOW_MINUTES",
+    15,
+    min_value=1,
+)

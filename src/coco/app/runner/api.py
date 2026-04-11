@@ -14,6 +14,7 @@ from .models import (
     ChatHistory,
 )
 from .utils import agentscope_msg_to_message
+from ..ownership import get_caller_identity, require_user_access, filter_by_user
 
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -64,19 +65,29 @@ async def get_session(
 
 @router.get("", response_model=list[ChatSpec])
 async def list_chats(
-    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    request: Request,
     channel: Optional[str] = Query(None, description="Filter by channel"),
     mgr: ChatManager = Depends(get_chat_manager),
     workspace=Depends(get_workspace),
 ):
     """List all chats with optional filters.
 
+    Non-admin users only see chats they own (user_id match).
+    Admin users see all chats.
+
     Args:
-        user_id: Optional user ID to filter chats
         channel: Optional channel name to filter chats
         mgr: Chat manager dependency
+
+    Returns:
+        List of ChatSpec with runtime status
     """
-    chats = await mgr.list_chats(user_id=user_id, channel=channel)
+    caller_id, role = get_caller_identity(request)
+
+    # For non-admin, force user filtering
+    user_filter = None if role == "admin" else caller_id
+
+    chats = await mgr.list_chats(user_id=user_filter, channel=channel)
     tracker = workspace.task_tracker
     result = []
     for spec in chats:
@@ -87,52 +98,71 @@ async def list_chats(
 
 @router.post("", response_model=ChatSpec)
 async def create_chat(
-    request: ChatSpec,
+    request: Request,
+    chat_request: ChatSpec,
     mgr: ChatManager = Depends(get_chat_manager),
 ):
     """Create a new chat.
 
     Server generates chat_id (UUID) automatically.
+    user_id is automatically set from the authenticated user.
 
     Args:
-        request: Chat creation request
+        chat_request: Chat creation request
         mgr: Chat manager dependency
 
     Returns:
         Created chat spec with UUID
     """
+    caller_id, role = get_caller_identity(request)
+
     chat_id = str(uuid4())
     spec = ChatSpec(
         id=chat_id,
-        name=request.name,
-        session_id=request.session_id,
-        user_id=request.user_id,
-        channel=request.channel,
-        meta=request.meta,
+        name=chat_request.name,
+        session_id=chat_request.session_id,
+        user_id=caller_id,  # Always from auth
+        channel=chat_request.channel,
+        meta=chat_request.meta,
     )
     return await mgr.create_chat(spec)
 
 
 @router.post("/batch-delete", response_model=dict)
 async def batch_delete_chats(
+    request: Request,
     chat_ids: list[str],
     mgr: ChatManager = Depends(get_chat_manager),
 ):
     """Delete chats by chat IDs.
 
+    Non-admin users can only delete chats they own.
+
     Args:
         chat_ids: List of chat IDs
         mgr: Chat manager dependency
-    Returns:
-        True if deleted, False if failed
 
+    Returns:
+        Dict with deleted count
     """
+    caller_id, role = get_caller_identity(request)
+
+    # For non-admin, filter out chats they don't own
+    if role != "admin":
+        allowed_ids = []
+        for cid in chat_ids:
+            chat = await mgr.get_chat(cid)
+            if chat and chat.user_id == caller_id:
+                allowed_ids.append(cid)
+        chat_ids = allowed_ids
+
     deleted = await mgr.delete_chats(chat_ids=chat_ids)
     return {"deleted": deleted}
 
 
 @router.get("/{chat_id}", response_model=ChatHistory)
 async def get_chat(
+    request: Request,
     chat_id: str,
     mgr: ChatManager = Depends(get_chat_manager),
     session: SafeJSONSession = Depends(get_session),
@@ -140,8 +170,9 @@ async def get_chat(
 ):
     """Get detailed information about a specific chat by UUID.
 
+    Non-admin users can only access chats they own.
+
     Args:
-        request: FastAPI request (for agent context)
         chat_id: Chat UUID
         mgr: Chat manager dependency
         session: SafeJSONSession dependency
@@ -152,12 +183,17 @@ async def get_chat(
     Raises:
         HTTPException: If chat not found (404)
     """
+    caller_id, role = get_caller_identity(request)
+
     chat_spec = await mgr.get_chat(chat_id)
     if not chat_spec:
         raise HTTPException(
             status_code=404,
             detail=f"Chat not found: {chat_id}",
         )
+
+    # Ownership check
+    require_user_access(caller_id, role, chat_spec.user_id)
 
     state = await session.get_session_state_dict(
         chat_spec.session_id,
@@ -177,11 +213,14 @@ async def get_chat(
 
 @router.put("/{chat_id}", response_model=ChatSpec)
 async def update_chat(
+    request: Request,
     chat_id: str,
     spec: ChatUpdate,
     mgr: ChatManager = Depends(get_chat_manager),
 ):
     """Update an existing chat.
+
+    Non-admin users can only update chats they own.
 
     Args:
         chat_id: Chat UUID
@@ -194,6 +233,18 @@ async def update_chat(
     Raises:
         HTTPException: If chat not found (404)
     """
+    caller_id, role = get_caller_identity(request)
+
+    existing = await mgr.get_chat(chat_id)
+    if not existing:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Chat not found: {chat_id}",
+        )
+
+    # Ownership check
+    require_user_access(caller_id, role, existing.user_id)
+
     updated = await mgr.patch_chat(chat_id, spec)
     if updated is None:
         raise HTTPException(
@@ -205,6 +256,7 @@ async def update_chat(
 
 @router.delete("/{chat_id}", response_model=dict)
 async def delete_chat(
+    request: Request,
     chat_id: str,
     mgr: ChatManager = Depends(get_chat_manager),
 ):
@@ -212,17 +264,30 @@ async def delete_chat(
 
     Note: This only deletes the chat spec (UUID mapping).
     JSONSession state is NOT deleted.
+    Non-admin users can only delete chats they own.
 
     Args:
         chat_id: Chat UUID
         mgr: Chat manager dependency
 
     Returns:
-        True if deleted, False if failed
+        Dict with deleted confirmation
 
     Raises:
         HTTPException: If chat not found (404)
     """
+    caller_id, role = get_caller_identity(request)
+
+    chat = await mgr.get_chat(chat_id)
+    if not chat:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Chat not found: {chat_id}",
+        )
+
+    # Ownership check
+    require_user_access(caller_id, role, chat.user_id)
+
     deleted = await mgr.delete_chats(chat_ids=[chat_id])
     if not deleted:
         raise HTTPException(

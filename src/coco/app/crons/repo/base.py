@@ -22,9 +22,12 @@ class BaseJobRepository(ABC):
 
     # ---- Optional but commonly needed convenience ops ----
 
-    async def list_jobs(self) -> list[CronJobSpec]:
+    async def list_jobs(self, user_id: Optional[str] = None) -> list[CronJobSpec]:
         jf = await self.load()
-        return jf.jobs
+        jobs = jf.jobs
+        if user_id is not None:
+            jobs = [j for j in jobs if j.user_id == user_id]
+        return jobs
 
     async def get_job(self, job_id: str) -> Optional[CronJobSpec]:
         jf = await self.load()

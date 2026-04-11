@@ -2,16 +2,12 @@ import {
   Layout,
   Menu,
   Button,
-  Modal,
-  Input,
-  Form,
   Tooltip,
   type MenuProps,
 } from "antd";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAppMessage } from "../hooks/useAppMessage";
 import AgentSelector from "../components/AgentSelector";
 import {
   SparkChatTabFill,
@@ -31,12 +27,11 @@ import {
   SparkMicLine,
   SparkAgentLine,
   SparkExitFullscreenLine,
-  SparkSearchUserLine,
   SparkMenuExpandLine,
   SparkMenuFoldLine,
   SparkOtherLine,
 } from "@agentscope-ai/icons";
-import { clearAuthToken } from "../api/config";
+import { clearAuthToken, getApiToken } from "../api/config";
 import { authApi } from "../api/modules/auth";
 import styles from "./index.module.less";
 import { useTheme } from "../contexts/ThemeContext";
@@ -57,12 +52,10 @@ interface SidebarProps {
 export default function Sidebar({ selectedKey }: SidebarProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { message } = useAppMessage();
   const { isDark } = useTheme();
   const [authEnabled, setAuthEnabled] = useState(false);
-  const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [accountLoading, setAccountLoading] = useState(false);
-  const [accountForm] = Form.useForm();
+  const [userRole, setUserRole] = useState<string>("user");
+  const [userName, setUserName] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
 
   // ── Effects ──────────────────────────────────────────────────────────────
@@ -72,64 +65,29 @@ export default function Sidebar({ selectedKey }: SidebarProps) {
       .getStatus()
       .then((res) => setAuthEnabled(res.enabled))
       .catch(() => {});
+    // Parse role from JWT token
+    const token = getApiToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[0]));
+        setUserRole(payload.role || "user");
+        setUserName(payload.sub || payload.uid || "");
+      } catch {
+        // If token parsing fails, verify via API
+        authApi.verify(token).then((info) => {
+          if (info.valid) {
+            setUserRole(info.role || "user");
+            setUserName(info.username || "");
+          }
+        }).catch(() => {});
+      }
+    }
   }, []);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // Keys visible to ALL roles (user + admin). Everything else is admin-only.
+  const userAllowedKeys = new Set(["chat", "channels", "sessions", "cron-jobs"]);
 
-  const handleUpdateProfile = async (values: {
-    currentPassword: string;
-    newUsername?: string;
-    newPassword?: string;
-  }) => {
-    const trimmedUsername = values.newUsername?.trim() || undefined;
-    const trimmedPassword = values.newPassword?.trim() || undefined;
-
-    if (values.newPassword && !trimmedPassword) {
-      message.error(t("account.passwordEmpty"));
-      return;
-    }
-
-    if (values.newUsername && !trimmedUsername) {
-      message.error(t("account.usernameEmpty"));
-      return;
-    }
-
-    if (!trimmedUsername && !trimmedPassword) {
-      message.warning(t("account.nothingToUpdate"));
-      return;
-    }
-
-    setAccountLoading(true);
-    try {
-      await authApi.updateProfile(
-        values.currentPassword,
-        trimmedUsername,
-        trimmedPassword,
-      );
-      message.success(t("account.updateSuccess"));
-      setAccountModalOpen(false);
-      accountForm.resetFields();
-      clearAuthToken();
-      window.location.href = "/login";
-    } catch (err: unknown) {
-      const raw = err instanceof Error ? err.message : "";
-      let msg = t("account.updateFailed");
-      if (raw.includes("password is incorrect")) {
-        msg = t("account.wrongPassword");
-      } else if (raw.includes("Nothing to update")) {
-        msg = t("account.nothingToUpdate");
-      } else if (raw.includes("cannot be empty")) {
-        msg = t("account.nothingToUpdate");
-      } else if (raw) {
-        msg = raw;
-      }
-      message.error(msg);
-    } finally {
-      setAccountLoading(false);
-    }
-  };
-
-  // ── Collapsed nav items (all leaf pages) ──────────────────────────────
+  // Collapsed nav items (all leaf pages)
 
   const collapsedNavItems = [
     {
@@ -234,11 +192,11 @@ export default function Sidebar({ selectedKey }: SidebarProps) {
       path: "/voice-transcription",
       label: t("nav.voiceTranscription"),
     },
-  ];
+  ].filter((item) => userRole === "admin" || userAllowedKeys.has(item.key));
 
   // ── Menu items ────────────────────────────────────────────────────────────
 
-  const menuItems: MenuProps["items"] = [
+  const allMenuItems: MenuProps["items"] = [
     {
       key: "chat",
       label: collapsed ? null : t("nav.chat"),
@@ -344,6 +302,24 @@ export default function Sidebar({ selectedKey }: SidebarProps) {
     },
   ];
 
+  const menuItems: MenuProps["items"] = userRole === "admin"
+    ? allMenuItems
+    : (allMenuItems?.map((group) => {
+        if (!group || typeof group === "string" || !("children" in group)) {
+          // Top-level items (like "chat") - check against userAllowedKeys
+          if (group && "key" in group) {
+            const key = (group as { key: string }).key;
+            return userAllowedKeys.has(key) ? group : null;
+          }
+          return group;
+        }
+        const children = (group as { children?: MenuProps["items"] }).children;
+        const filteredChildren = children?.filter(
+          (child) => !child || typeof child === "string" || !("key" in child) || userAllowedKeys.has((child as { key: string }).key)
+        );
+        return filteredChildren?.length ? { ...group, children: filteredChildren } : null;
+      })?.filter(Boolean) as MenuProps["items"]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -400,20 +376,10 @@ export default function Sidebar({ selectedKey }: SidebarProps) {
 
       {authEnabled && !collapsed && (
         <div className={styles.authActions}>
-          <Button
-            type="text"
-            icon={<SparkSearchUserLine size={16} />}
-            onClick={() => {
-              accountForm.resetFields();
-              setAccountModalOpen(true);
-            }}
-            block
-            className={`${styles.authBtn} ${
-              collapsed ? styles.authBtnCollapsed : ""
-            }`}
-          >
-            {!collapsed && t("account.title")}
-          </Button>
+          <div className={styles.userInfo}>
+            <span className={styles.userName}>{userName}</span>
+            <span className={styles.userRole}>{userRole}</span>
+          </div>
           <Button
             type="text"
             icon={<SparkExitFullscreenLine size={16} />}
@@ -422,11 +388,9 @@ export default function Sidebar({ selectedKey }: SidebarProps) {
               window.location.href = "/login";
             }}
             block
-            className={`${styles.authBtn} ${
-              collapsed ? styles.authBtnCollapsed : ""
-            }`}
+            className={styles.authBtn}
           >
-            {!collapsed && t("login.logout")}
+            {t("login.logout")}
           </Button>
         </div>
       )}
@@ -445,71 +409,6 @@ export default function Sidebar({ selectedKey }: SidebarProps) {
           className={styles.collapseToggle}
         />
       </div>
-
-      <Modal
-        open={accountModalOpen}
-        onCancel={() => setAccountModalOpen(false)}
-        title={t("account.title")}
-        footer={null}
-        destroyOnHidden
-        centered
-      >
-        <Form
-          form={accountForm}
-          layout="vertical"
-          onFinish={handleUpdateProfile}
-        >
-          <Form.Item
-            name="currentPassword"
-            label={t("account.currentPassword")}
-            rules={[
-              { required: true, message: t("account.currentPasswordRequired") },
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
-          <Form.Item name="newUsername" label={t("account.newUsername")}>
-            <Input placeholder={t("account.newUsernamePlaceholder")} />
-          </Form.Item>
-          <Form.Item name="newPassword" label={t("account.newPassword")}>
-            <Input.Password placeholder={t("account.newPasswordPlaceholder")} />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            label={t("account.confirmPassword")}
-            dependencies={["newPassword"]}
-            rules={[
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value && !getFieldValue("newPassword")) {
-                    return Promise.resolve();
-                  }
-                  if (value === getFieldValue("newPassword")) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(
-                    new Error(t("account.passwordMismatch")),
-                  );
-                },
-              }),
-            ]}
-          >
-            <Input.Password
-              placeholder={t("account.confirmPasswordPlaceholder")}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={accountLoading}
-              block
-            >
-              {t("account.save")}
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
     </Sider>
   );
 }

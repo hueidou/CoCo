@@ -1,74 +1,89 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Form, Input } from "antd";
+import { Button, Spin, Alert } from "antd";
 import { useAppMessage } from "../../hooks/useAppMessage";
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { authApi } from "../../api/modules/auth";
-import { setAuthToken } from "../../api/config";
+import { 
+  KeyOutlined, 
+  GoogleOutlined, 
+  GithubOutlined,
+} from "@ant-design/icons";
+import { authApi, OIDCProvider } from "../../api/modules/auth";
 import { useTheme } from "../../contexts/ThemeContext";
+
+interface AuthStatusResponse {
+  enabled: boolean;
+  has_users: boolean;
+  allow_registration: boolean;
+}
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isDark } = useTheme();
-  const [loading, setLoading] = useState(false);
-  const [isRegister, setIsRegister] = useState(false);
-  const [hasUsers, setHasUsers] = useState(true);
+  const [loadingOIDC, setLoadingOIDC] = useState(false);
+  const [oidcProviders, setOidcProviders] = useState<OIDCProvider[]>([]);
   const { message } = useAppMessage();
 
   useEffect(() => {
-    authApi
-      .getStatus()
-      .then((res) => {
-        if (!res.enabled) {
+    const loadAuthStatus = async () => {
+      try {
+        const status = await authApi.getStatus() as AuthStatusResponse;
+        if (!status.enabled) {
           navigate("/chat", { replace: true });
           return;
         }
-        setHasUsers(res.has_users);
-        if (!res.has_users) {
-          setIsRegister(true);
+
+        // Load OIDC status
+        try {
+          const oidcStatusData = await authApi.oidc.getStatus();
+
+          if (oidcStatusData.enabled && oidcStatusData.providers_configured > 0) {
+            const providers = await authApi.oidc.getProviders();
+            setOidcProviders(providers.providers);
+          }
+        } catch (oidcError) {
+          console.debug("OIDC not configured:", oidcError);
         }
-      })
-      .catch(() => {});
+
+      } catch (error) {
+        console.error("Failed to load auth status:", error);
+      }
+    };
+
+    loadAuthStatus();
   }, [navigate]);
 
-  const onFinish = async (values: { username: string; password: string }) => {
-    setLoading(true);
+  const handleOIDCLogin = async (providerId: string) => {
+    setLoadingOIDC(true);
     try {
-      const raw = searchParams.get("redirect") || "/chat";
-      const redirect =
-        raw.startsWith("/") && !raw.startsWith("//") ? raw : "/chat";
+      const redirect = searchParams.get("redirect") || "/chat";
+      const res = await authApi.oidc.login({
+        provider_id: providerId,
+        redirect_url: `${window.location.origin}/auth/oidc/callback?redirect=${encodeURIComponent(redirect)}`,
+      });
 
-      if (isRegister) {
-        const res = await authApi.register(values.username, values.password);
-        if (res.token) {
-          setAuthToken(res.token);
-          message.success(t("login.registerSuccess"));
-          navigate(redirect, { replace: true });
-        }
-      } else {
-        const res = await authApi.login(values.username, values.password);
-        if (res.token) {
-          setAuthToken(res.token);
-          navigate(redirect, { replace: true });
-        } else {
-          message.info(t("login.authNotEnabled"));
-          navigate(redirect, { replace: true });
-        }
-      }
+      // Store state for CSRF protection
+      localStorage.setItem("oidc_state", res.state);
+
+      // Redirect to OIDC provider for authentication
+      window.location.href = res.authorization_url;
     } catch (err) {
+      console.error("OIDC login failed:", err);
       message.error(
-        isRegister
-          ? err instanceof Error
-            ? err.message
-            : t("login.registerFailed")
-          : t("login.failed"),
+        err instanceof Error ? err.message : t("login.oidcFailed")
       );
     } finally {
-      setLoading(false);
+      setLoadingOIDC(false);
     }
+  };
+
+  const renderProviderIcon = (provider: OIDCProvider) => {
+    const providerName = provider.name.toLowerCase();
+    if (providerName.includes("google")) return <GoogleOutlined />;
+    if (providerName.includes("github")) return <GithubOutlined />;
+    return <KeyOutlined />;
   };
 
   return (
@@ -103,72 +118,60 @@ export default function LoginPage() {
             style={{ height: 48, marginBottom: 12 }}
           />
           <h2 style={{ margin: 0, fontWeight: 600, fontSize: 20 }}>
-            {isRegister ? t("login.registerTitle") : t("login.title")}
+            {t("login.title")}
           </h2>
-          {!hasUsers && (
-            <p
-              style={{
-                margin: "8px 0 0",
-                color: isDark ? "rgba(255,255,255,0.45)" : "#666",
-                fontSize: 13,
-              }}
-            >
-              {t("login.firstUserHint")}
-            </p>
-          )}
+          <p
+            style={{
+              margin: "8px 0 0",
+              color: isDark ? "rgba(255,255,255,0.45)" : "#666",
+              fontSize: 13,
+            }}
+          >
+            {t("login.oidcHelpMultiUser")}
+          </p>
         </div>
 
-        <Form
-          layout="vertical"
-          onFinish={onFinish}
-          autoComplete="off"
-          size="large"
-        >
-          <Form.Item
-            name="username"
-            rules={[{ required: true, message: t("login.usernameRequired") }]}
-          >
-            <Input
-              prefix={
-                <UserOutlined
-                  style={{
-                    color: isDark ? "rgba(255,255,255,0.45)" : undefined,
-                  }}
-                />
-              }
-              placeholder={t("login.usernamePlaceholder")}
-              autoFocus
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: t("login.passwordRequired") }]}
-          >
-            <Input.Password
-              prefix={
-                <LockOutlined
-                  style={{
-                    color: isDark ? "rgba(255,255,255,0.45)" : undefined,
-                  }}
-                />
-              }
-              placeholder={t("login.passwordPlaceholder")}
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              block
-              style={{ height: 44, borderRadius: 8, fontWeight: 500 }}
-            >
-              {isRegister ? t("login.register") : t("login.submit")}
-            </Button>
-          </Form.Item>
-        </Form>
+        {loadingOIDC ? (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16, color: isDark ? "#aaa" : "#666" }}>
+              {t("login.oidcLoading")}
+            </p>
+          </div>
+        ) : (
+          <div>
+            {oidcProviders.length > 0 ? (
+              <div style={{ marginBottom: 24 }}>
+                {oidcProviders.map((provider) => (
+                  <Button
+                    key={provider.id}
+                    icon={renderProviderIcon(provider)}
+                    size="large"
+                    onClick={() => handleOIDCLogin(provider.id)}
+                    style={{
+                      width: "100%",
+                      marginBottom: 12,
+                      height: 44,
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {t("login.continueWith")} {provider.name}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <Alert
+                message={t("login.oidcFailed")}
+                type="error"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

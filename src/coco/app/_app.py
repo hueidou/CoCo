@@ -22,6 +22,7 @@ from ..constant import DOCS_ENABLED, LOG_LEVEL_ENV, CORS_ORIGINS, WORKING_DIR
 from ..__version__ import __version__
 from ..utils.logging import setup_logger, add_coco_file_handler
 from .auth import AuthMiddleware
+from .permissions import PermissionMiddleware
 from .routers import router as api_router, create_agent_scoped_router
 from .routers.agent_scoped import AgentContextMiddleware
 from .routers.voice import voice_router
@@ -425,6 +426,7 @@ app = FastAPI(
 # Add agent context middleware for agent-scoped routes
 app.add_middleware(AgentContextMiddleware)
 
+app.add_middleware(PermissionMiddleware)
 app.add_middleware(AuthMiddleware)
 
 # Apply CORS middleware if CORS_ORIGINS is set

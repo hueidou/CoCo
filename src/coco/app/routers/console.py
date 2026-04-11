@@ -29,21 +29,26 @@ def _safe_filename(name: str) -> str:
     return re.sub(r"[^\w.\-]", "_", base)[:200] or "file"
 
 
-def _extract_session_and_payload(request_data: Union[AgentRequest, dict]):
+def _extract_session_and_payload(request_data: Union[AgentRequest, dict], request: Request):
     """Extract run_key (ChatSpec.id), session_id, and native payload.
 
     run_key must be ChatSpec.id (chat_id) so it matches list_chats/get_chat.
+    user_id is derived from the authenticated user (request.state.user),
+    not from the request body, to prevent spoofing.
     """
+    # user_id comes from auth middleware, not from client payload
+    sender_id = getattr(request.state, "user", None)
+    if not sender_id:
+        raise HTTPException(status_code=403, detail="Authentication required")
+
     if isinstance(request_data, AgentRequest):
         channel_id = request_data.channel or "console"
-        sender_id = request_data.user_id or "default"
         session_id = request_data.session_id or "default"
         content_parts = (
             list(request_data.input[0].content) if request_data.input else []
         )
     else:
         channel_id = request_data.get("channel", "console")
-        sender_id = request_data.get("user_id", "default")
         session_id = request_data.get("session_id", "default")
         input_data = request_data.get("input", [])
         content_parts = []
@@ -87,7 +92,7 @@ async def post_console_chat(
             detail="Channel Console not found",
         )
     try:
-        native_payload = _extract_session_and_payload(request_data)
+        native_payload = _extract_session_and_payload(request_data, request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     session_id = console_channel.resolve_session_id(
@@ -101,6 +106,7 @@ async def post_console_chat(
             name = content.text[:10]
         else:
             name = "Media Message"
+
     chat = await workspace.chat_manager.get_or_create_chat(
         session_id,
         native_payload["sender_id"],

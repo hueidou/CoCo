@@ -15,7 +15,6 @@ import { toDisplayUrl } from "../utils";
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_USER_ID = "default";
 const DEFAULT_CHANNEL = "console";
 const DEFAULT_SESSION_NAME = "New Chat";
 const ROLE_TOOL = "tool";
@@ -443,13 +442,13 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
 
   private createEmptySession(sessionId: string): ExtendedSession {
     window.currentSessionId = sessionId;
-    window.currentUserId = DEFAULT_USER_ID;
+    window.currentUserId = "default";
     window.currentChannel = DEFAULT_CHANNEL;
     return {
       id: sessionId,
       name: DEFAULT_SESSION_NAME,
       sessionId,
-      userId: DEFAULT_USER_ID,
+      userId: "default",
       channel: DEFAULT_CHANNEL,
       messages: [],
       meta: {},
@@ -458,7 +457,7 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
 
   private updateWindowVariables(session: ExtendedSession): void {
     window.currentSessionId = session.sessionId || "";
-    window.currentUserId = session.userId || DEFAULT_USER_ID;
+    window.currentUserId = session.userId || "default",
     window.currentChannel = session.channel || DEFAULT_CHANNEL;
   }
 
@@ -578,7 +577,7 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
           id: sessionId,
           name: fromList.name || DEFAULT_SESSION_NAME,
           sessionId: fromList.sessionId || sessionId,
-          userId: fromList.userId || DEFAULT_USER_ID,
+          userId: fromList.userId || "default",
           channel: fromList.channel || DEFAULT_CHANNEL,
           messages,
           meta: fromList.meta || {},
@@ -617,7 +616,7 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
           id: sessionId,
           name: refreshed.name || DEFAULT_SESSION_NAME,
           sessionId: refreshed.sessionId || sessionId,
-          userId: refreshed.userId || DEFAULT_USER_ID,
+          userId: refreshed.userId || "default",
           channel: refreshed.channel || DEFAULT_CHANNEL,
           messages,
           meta: refreshed.meta || {},
@@ -649,7 +648,7 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
       id: sessionId,
       name: fromList?.name || sessionId,
       sessionId: fromList?.sessionId || sessionId,
-      userId: fromList?.userId || DEFAULT_USER_ID,
+      userId: fromList?.userId || "default",
       channel: fromList?.channel || DEFAULT_CHANNEL,
       messages,
       meta: fromList?.meta || {},
@@ -698,7 +697,7 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
     const extended: ExtendedSession = {
       ...session,
       sessionId: session.id,
-      userId: DEFAULT_USER_ID,
+      userId: "default",
       channel: DEFAULT_CHANNEL,
     } as ExtendedSession;
 

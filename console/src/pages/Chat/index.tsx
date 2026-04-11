@@ -74,7 +74,6 @@ function renderSuggestionLabel(command: string, description: string) {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_USER_ID = "default";
 const DEFAULT_CHANNEL = "console";
 
 // ---------------------------------------------------------------------------
@@ -608,7 +607,6 @@ export default function ChatPage() {
       const requestBody = {
         input: rewrittenInput,
         session_id: window.currentSessionId || session?.session_id || "",
-        user_id: window.currentUserId || session?.user_id || DEFAULT_USER_ID,
         channel: window.currentChannel || session?.channel || DEFAULT_CHANNEL,
         stream: true,
         ...biz_params,
@@ -801,7 +799,6 @@ export default function ChatPage() {
             body: JSON.stringify({
               reconnect: true,
               session_id: window.currentSessionId || data.session_id,
-              user_id: window.currentUserId || DEFAULT_USER_ID,
               channel: window.currentChannel || DEFAULT_CHANNEL,
             }),
             signal: data.signal,

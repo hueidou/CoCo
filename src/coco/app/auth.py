@@ -7,13 +7,10 @@ variable ``COCO_AUTH_ENABLED`` is set to a truthy value (``true``,
 registration flow rather than environment variables, so that agents
 running inside the process cannot read plaintext passwords.
 
-Single-user design: only one account can be registered.  If the user
-forgets their password, delete ``auth.json`` from ``SECRET_DIR`` and
-restart the service to re-register.
+Supports multi-user mode with roles stored in SQLite database.
 
-Uses only Python stdlib (hashlib, hmac, secrets) to avoid adding new
-dependencies.  The password is stored as a salted SHA-256 hash in
-``auth.json`` under ``SECRET_DIR``.
+Uses bcrypt for password hashing and stdlib
+for JWT tokens. The password is stored as a bcrypt hash.
 """
 from __future__ import annotations
 
@@ -24,12 +21,15 @@ import logging
 import os
 import secrets
 import time
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Dict, Any, Tuple
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..constant import SECRET_DIR
+import bcrypt
+
+from ..constant import SECRET_DIR, JWT_TOKEN_EXPIRY_SECONDS
 from ..security.secret_store import (
     AUTH_SECRET_FIELDS,
     decrypt_dict_fields,
@@ -41,15 +41,16 @@ logger = logging.getLogger(__name__)
 
 AUTH_FILE = SECRET_DIR / "auth.json"
 
-# Token validity: 7 days
-TOKEN_EXPIRY_SECONDS = 7 * 24 * 3600
-
 # Paths that do NOT require authentication
 _PUBLIC_PATHS: frozenset[str] = frozenset(
     {
         "/api/auth/login",
         "/api/auth/status",
         "/api/auth/register",
+        "/api/auth/oidc/providers",
+        "/api/auth/oidc/login",
+        "/api/auth/oidc/callback",
+        "/api/auth/oidc/status",
         "/api/version",
         "/api/settings/language",
     },
@@ -81,25 +82,34 @@ def _prepare_secret_parent(path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Password hashing (salted SHA-256, no external deps)
+# Password hashing (bcrypt)
 # ---------------------------------------------------------------------------
 
 
 def _hash_password(
     password: str,
     salt: Optional[str] = None,
-) -> tuple[str, str]:
-    """Hash *password* with *salt*.  Returns ``(hash_hex, salt_hex)``."""
-    if salt is None:
-        salt = secrets.token_hex(16)
-    h = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
-    return h, salt
+) -> tuple[str, str, str]:
+    """Hash *password*. Returns ``(hash, "", "bcrypt")``.
+    
+    bcrypt handles salting internally, so the salt parameter is ignored.
+    """
+    # bcrypt handles salting internally
+    # Cost factor 12 is a good balance between security and performance
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12))
+    return hashed.decode("utf-8"), "", "bcrypt"
 
 
 def verify_password(password: str, stored_hash: str, salt: str) -> bool:
-    """Verify *password* against a stored hash."""
-    h, _ = _hash_password(password, salt)
-    return hmac.compare_digest(h, stored_hash)
+    """Verify *password* against a stored bcrypt hash.
+    
+    bcrypt hashes don't use external salt, the salt parameter is ignored.
+    """
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+    except Exception as e:
+        logger.error(f"Error verifying bcrypt password: {e}")
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -118,18 +128,39 @@ def _get_jwt_secret() -> str:
     return secret
 
 
-def create_token(username: str) -> str:
-    """Create an HMAC-signed token: ``base64(payload).signature``."""
+def create_token(username: str, user_id: Optional[int] = None, role: Optional[str] = None) -> str:
+    """
+    Create an HMAC-signed token: ``base64(payload).signature``.
+    
+    Args:
+        username: User's username
+        user_id: User ID
+        role: User role
+    
+    Returns:
+        JWT token string
+    """
     import base64
 
     secret = _get_jwt_secret()
-    payload = json.dumps(
-        {
-            "sub": username,
-            "exp": int(time.time()) + TOKEN_EXPIRY_SECONDS,
-            "iat": int(time.time()),
-        },
-    )
+    
+    # Token expiry (always multi-user mode)
+    expiry = int(time.time()) + JWT_TOKEN_EXPIRY_SECONDS
+    
+    # Build payload with user information
+    payload_data = {
+        "sub": username,
+        "exp": expiry,
+        "iat": int(time.time()),
+    }
+    
+    # Add user ID and role fields
+    if user_id is not None:
+        payload_data["uid"] = user_id
+    if role:
+        payload_data["role"] = role
+    
+    payload = json.dumps(payload_data)
     payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode()
     sig = hmac.new(
         secret.encode(),
@@ -139,8 +170,18 @@ def create_token(username: str) -> str:
     return f"{payload_b64}.{sig}"
 
 
-def verify_token(token: str) -> Optional[str]:
-    """Verify *token*, return username if valid, ``None`` otherwise."""
+def verify_token(token: str, return_dict: bool = False) -> Optional[Any]:
+    """
+    Verify *token*, return user information.
+    
+    Args:
+        token: JWT token to verify
+        return_dict: If True, returns a dict with user info instead of just username
+    
+    Returns:
+        - If return_dict=False: username (str) or None
+        - If return_dict=True: dict with user info or None
+    """
     import base64
 
     try:
@@ -159,7 +200,19 @@ def verify_token(token: str) -> Optional[str]:
         payload = json.loads(base64.urlsafe_b64decode(payload_b64))
         if payload.get("exp", 0) < time.time():
             return None
-        return payload.get("sub")
+        
+        if return_dict:
+            # Return full user information
+            user_info = {
+                "username": payload.get("sub"),
+                "user_id": payload.get("uid"),
+                "role": payload.get("role", "user"),
+                "is_multi_user": True,
+            }
+            return user_info
+        else:
+            # Return just username for compatibility
+            return payload.get("sub")
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
         logger.debug("Token verification failed: %s", exc)
         return None
@@ -220,6 +273,11 @@ def _save_auth_data(data: dict) -> None:
     _chmod_best_effort(AUTH_FILE, 0o600)
 
 
+# ---------------------------------------------------------------------------
+# User management and authentication
+# ---------------------------------------------------------------------------
+
+
 def is_auth_enabled() -> bool:
     """Check whether authentication is enabled via environment variable.
 
@@ -234,40 +292,98 @@ def is_auth_enabled() -> bool:
 
 def has_registered_users() -> bool:
     """Return ``True`` if a user has been registered."""
-    data = _load_auth_data()
-    return bool(data.get("user"))
+    try:
+        from ..db import SessionLocal, UserRepository
+        
+        db = SessionLocal()
+        try:
+            user_repo = UserRepository(db)
+            count = user_repo.count_users(active_only=True)
+            return count > 0
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Error checking registered users: {e}")
+        return False
 
 
-# ---------------------------------------------------------------------------
-# Registration (single-user)
-# ---------------------------------------------------------------------------
-
-
-def register_user(username: str, password: str) -> Optional[str]:
-    """Register the single user account.
-
-    Returns a token on success, ``None`` if a user already exists.
+def register_user(username: str, password: str, email: Optional[str] = None, role: str = "user") -> Optional[str]:
     """
-    data = _load_auth_data()
-
-    # Only one user allowed
-    if data.get("user"):
+    Register a user account.
+    
+    Args:
+        username: User's username
+        password: User's password
+        email: User's email (optional)
+        role: User's role (default: "user")
+    
+    Returns:
+        JWT token on success, None if registration fails
+    """
+    try:
+        from ..db import SessionLocal, UserRepository
+        from ..constant import ALLOW_REGISTRATION
+        
+        if not ALLOW_REGISTRATION:
+            logger.info("User registration is disabled by configuration")
+            return None
+        
+        # Validate role
+        if role not in ["admin", "user"]:
+            logger.warning(f"Invalid role specified: {role}, defaulting to 'user'")
+            role = "user"
+        
+        # Special case: first user registration should be admin
+        db = SessionLocal()
+        try:
+            user_repo = UserRepository(db)
+            user_count = user_repo.count_users(active_only=False)
+            
+            if user_count == 0:
+                # First user becomes admin
+                role = "admin"
+                logger.info(f"First user '{username}' will be registered as admin")
+            
+            # Check if username already exists
+            existing_user = user_repo.get_by_username(username)
+            if existing_user:
+                logger.info(f"Username '{username}' already exists")
+                return None
+            
+            # Check if email already exists (if provided)
+            if email:
+                existing_email = user_repo.get_by_email(email)
+                if existing_email:
+                    logger.info(f"Email '{email}' already registered")
+                    return None
+            
+            # Create user
+            pw_hash, salt, algorithm = _hash_password(password)
+            user = user_repo.create_user(
+                username=username,
+                role=role,
+                email=email,
+                password_hash=pw_hash,
+                password_salt=salt,
+                is_verified=(email is not None),  # TODO: implement email verification
+            )
+            
+            logger.info(f"User '{username}' registered with role '{role}' (multi-user mode)")
+            return create_token(
+                username=user.username,
+                user_id=user.id,
+                role=user.role,
+            )
+            
+        finally:
+            db.close()
+            
+    except ImportError as e:
+        logger.error(f"Failed to import database module: {e}")
         return None
-
-    pw_hash, salt = _hash_password(password)
-    data["user"] = {
-        "username": username,
-        "password_hash": pw_hash,
-        "password_salt": salt,
-    }
-
-    # Ensure jwt_secret exists
-    if not data.get("jwt_secret"):
-        data["jwt_secret"] = secrets.token_hex(32)
-
-    _save_auth_data(data)
-    logger.info("User '%s' registered", username)
-    return create_token(username)
+    except Exception as e:
+        logger.error(f"Registration failed: {e}", exc_info=True)
+        return None
 
 
 def auto_register_from_env() -> None:
@@ -306,61 +422,134 @@ def update_credentials(
     current_password: str,
     new_username: Optional[str] = None,
     new_password: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> Optional[str]:
-    """Update the registered user's username and/or password.
-
+    """
+    Update the registered user's username and/or password.
+    
     Requires the current password for verification.  Returns a new
     token on success (because the username may have changed), or
     ``None`` if verification fails.
     """
-    data = _load_auth_data()
-    user = data.get("user")
-    if not user:
+    if user_id is None:
+        logger.error("User ID is required")
         return None
-
-    stored_hash = user.get("password_hash", "")
-    stored_salt = user.get("password_salt", "")
-    if not verify_password(current_password, stored_hash, stored_salt):
+    
+    try:
+        from ..db import SessionLocal, UserRepository
+        
+        db = SessionLocal()
+        try:
+            user_repo = UserRepository(db)
+            user = user_repo.get_by_id(user_id)
+            
+            if not user:
+                logger.error(f"User not found with ID: {user_id}")
+                return None
+            
+            if not user.is_active:
+                logger.error(f"User is inactive: {user.username}")
+                return None
+            
+            # Verify current password
+            if not verify_password(current_password, user.password_hash, user.password_salt):
+                logger.debug(f"Invalid current password for user: {user.username}")
+                return None
+            
+            # Prepare update fields
+            update_fields = {}
+            
+            if new_username and new_username.strip():
+                # Check if new username is available
+                existing_user = user_repo.get_by_username(new_username.strip())
+                if existing_user and existing_user.id != user_id:
+                    logger.info(f"Username '{new_username}' already exists")
+                    return None
+                update_fields["username"] = new_username.strip()
+            
+            if new_password:
+                # Update password
+                pw_hash, salt, algorithm = _hash_password(new_password)
+                update_fields["password_hash"] = pw_hash
+                update_fields["password_salt"] = salt
+            
+            if update_fields:
+                updated_user = user_repo.update_user(user_id, **update_fields)
+                if not updated_user:
+                    logger.error(f"Failed to update user with ID: {user_id}")
+                    return None
+                
+                # Get the updated user
+                user = user_repo.get_by_id(user_id)
+            
+            logger.info(f"Credentials updated for user '{user.username}' (ID: {user.id})")
+            return create_token(
+                username=user.username,
+                user_id=user.id,
+                role=user.role,
+            )
+            
+        finally:
+            db.close()
+            
+    except ImportError as e:
+        logger.error(f"Failed to import database module: {e}")
         return None
-
-    if new_username and new_username.strip():
-        user["username"] = new_username.strip()
-
-    if new_password:
-        pw_hash, salt = _hash_password(new_password)
-        user["password_hash"] = pw_hash
-        user["password_salt"] = salt
-        # Rotate JWT secret to invalidate all existing sessions
-        data["jwt_secret"] = secrets.token_hex(32)
-
-    data["user"] = user
-    _save_auth_data(data)
-    logger.info("Credentials updated for user '%s'", user["username"])
-    return create_token(user["username"])
-
-
-# ---------------------------------------------------------------------------
-# Authentication
-# ---------------------------------------------------------------------------
+    except Exception as e:
+        logger.error(f"Failed to update credentials: {e}", exc_info=True)
+        return None
 
 
 def authenticate(username: str, password: str) -> Optional[str]:
     """Authenticate *username* / *password*.  Returns a token if valid."""
-    data = _load_auth_data()
-    user = data.get("user")
-    if not user:
+    try:
+        from ..db import SessionLocal, UserRepository
+        
+        db = SessionLocal()
+        try:
+            user_repo = UserRepository(db)
+            user = user_repo.get_by_username(username)
+            
+            if not user:
+                logger.debug(f"User not found: {username}")
+                return None
+            
+            if not user.is_active:
+                logger.debug(f"User is inactive: {username}")
+                return None
+            
+            # Verify password
+            if user.password_hash is not None:
+                if not verify_password(password, user.password_hash, user.password_salt):
+                    logger.debug(f"Invalid password for user: {username}")
+                    return None
+            else:
+                # User doesn't have a password (OIDC-only user)
+                logger.debug(f"User has no password (OIDC-only): {username}")
+                return None
+            
+            # Update last login
+            user_repo.update_last_login(user.id)
+            
+            # Create token with extended information
+            token = create_token(
+                username=user.username,
+                user_id=user.id,
+                role=user.role,
+            )
+            
+            logger.info(f"User authenticated: {username} (role: {user.role})")
+            return token
+            
+        finally:
+            db.close()
+            
+    except ImportError as e:
+        logger.error(f"Failed to import database module: {e}")
         return None
-    if user.get("username") != username:
+    except Exception as e:
+        logger.error(f"Authentication failed: {e}", exc_info=True)
         return None
-    stored_hash = user.get("password_hash", "")
-    stored_salt = user.get("password_salt", "")
-    if (
-        stored_hash
-        and stored_salt
-        and verify_password(password, stored_hash, stored_salt)
-    ):
-        return create_token(username)
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -377,6 +566,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         call_next,
     ) -> Response:
         """Check Bearer token on protected API routes; skip public paths."""
+        # Even for skipped requests (localhost, etc.), parse token if present
+        # so that PermissionMiddleware can use user info
+        token = self._extract_token(request)
+        if token:
+            user_info = verify_token(token, return_dict=True)
+            if user_info is not None:
+                request.state.user = user_info.get("username")
+                request.state.user_id = user_info.get("user_id")
+                request.state.user_role = user_info.get("role", "user")
+                request.state.user_info = user_info
+        
         if self._should_skip_auth(request):
             return await call_next(request)
 
@@ -388,8 +588,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 media_type="application/json",
             )
 
-        user = verify_token(token)
-        if user is None:
+        # Always get full user information for multi-user mode compatibility
+        user_info = verify_token(token, return_dict=True)
+        if user_info is None:
             return Response(
                 content=json.dumps(
                     {"detail": "Invalid or expired token"},
@@ -398,7 +599,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 media_type="application/json",
             )
 
-        request.state.user = user
+        # Set user information in request state
+        request.state.user = user_info.get("username")
+        request.state.user_id = user_info.get("user_id")
+        request.state.user_role = user_info.get("role", "user")
+        request.state.user_info = user_info
+        
         return await call_next(request)
 
     @staticmethod

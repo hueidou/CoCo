@@ -73,8 +73,9 @@ export async function request<T = unknown>(
   if (!response.ok) {
     if (response.status === 401) {
       clearAuthToken();
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      const path = window.location.pathname;
+      if (path !== "/login" && path !== "/login/callback") {
+        window.location.href = `/login?redirect=${encodeURIComponent(path)}`;
       }
       throw new Error("Not authenticated");
     }

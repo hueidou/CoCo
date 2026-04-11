@@ -292,6 +292,32 @@
   border-top: 1px solid #f0f0f0;
 }
 
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 8px;
+  font-size: 13px;
+}
+
+.userName {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userRole {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.45);
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
 .authBtn {
   display: flex;
   align-items: center;
@@ -584,6 +610,15 @@
 
   .authActions {
     border-top-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .userName {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .userRole {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.55);
   }
 
   .authBtn {
